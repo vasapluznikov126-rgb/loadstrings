@@ -1,19 +1,73 @@
+--[[
+    Universal Remote Spy + Executor
+    Работает на большинстве игр (если нет античита на :GetRemoteEvent())
+    Открытие GUI: Кнопка в левом верхнем углу или клавиша "Ins" (Insert)
+    Кнопку можно перетаскивать мышкой
+]]
+
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
+local userInputService = game:GetService("UserInputService")
 
+-- Создаём ScreenGui в CoreGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "RemoteSpyTool"
 gui.ResetOnSpawn = false
 gui.Parent = game:GetService("CoreGui")
 
+-- Главная кнопка открытия (теперь её можно перетаскивать)
 local toggleBtn = Instance.new("ImageButton")
 toggleBtn.Size = UDim2.new(0, 40, 0, 40)
 toggleBtn.Position = UDim2.new(0, 5, 0, 5)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 toggleBtn.BackgroundTransparency = 0.2
-toggleBtn.Image = "rbxassetid://6023426968"
+toggleBtn.Image = "rbxassetid://6023426968" -- шестерёнка
 toggleBtn.Parent = gui
 
+-- Добавляем обводку для кнопки (чтобы было видно границы)
+local btnStroke = Instance.new("UIStroke")
+btnStroke.Color = Color3.fromRGB(255, 255, 255)
+btnStroke.Thickness = 1
+btnStroke.Transparency = 0.8
+btnStroke.Parent = toggleBtn
+
+-- Переменные для перетаскивания кнопки
+local btnDragging = false
+local btnDragStart = nil
+local btnStartPos = nil
+
+-- Обработка перетаскивания кнопки
+toggleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        btnDragging = true
+        btnDragStart = input.Position
+        btnStartPos = toggleBtn.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                btnDragging = false
+            end
+        end)
+    end
+end)
+
+toggleBtn.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        if btnDragging then
+            local delta = input.Position - btnDragStart
+            local newX = btnStartPos.X.Offset + delta.X
+            local newY = btnStartPos.Y.Offset + delta.Y
+            
+            -- Ограничиваем позицию, чтобы кнопка не выходила за пределы экрана
+            newX = math.clamp(newX, 0, userInputService.AbsoluteSize.X - toggleBtn.AbsoluteSize.X)
+            newY = math.clamp(newY, 0, userInputService.AbsoluteSize.Y - toggleBtn.AbsoluteSize.Y)
+            
+            toggleBtn.Position = UDim2.new(0, newX, 0, newY)
+        end
+    end
+end)
+
+-- Основное окно
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 400, 0, 500)
 mainFrame.Position = UDim2.new(0, 50, 0, 50)
@@ -22,6 +76,7 @@ mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.Parent = gui
 
+-- Заголовок
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -31,6 +86,7 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.Parent = mainFrame
 
+-- Кнопка закрытия
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -30, 0, 0)
@@ -39,16 +95,18 @@ closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.Parent = mainFrame
 
+-- Поисковая строка
 local searchBox = Instance.new("TextBox")
 searchBox.Size = UDim2.new(1, -10, 0, 25)
 searchBox.Position = UDim2.new(0, 5, 0, 35)
 searchBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 searchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-searchBox.PlaceholderText = "Search remotes..."
+searchBox.PlaceholderText = "Поиск ремоутов..."
 searchBox.TextXAlignment = Enum.TextXAlignment.Left
 searchBox.ClearTextOnFocus = false
 searchBox.Parent = mainFrame
 
+-- Список ремоутов (ScrollingFrame)
 local listFrame = Instance.new("ScrollingFrame")
 listFrame.Size = UDim2.new(1, -10, 1, -100)
 listFrame.Position = UDim2.new(0, 5, 0, 65)
@@ -64,6 +122,7 @@ listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0, 2)
 listLayout.Parent = listFrame
 
+-- Панель вызова
 local execFrame = Instance.new("Frame")
 execFrame.Size = UDim2.new(1, -10, 0, 80)
 execFrame.Position = UDim2.new(0, 5, 1, -90)
@@ -73,7 +132,7 @@ execFrame.Parent = mainFrame
 
 local remoteNameLabel = Instance.new("TextLabel")
 remoteNameLabel.Size = UDim2.new(1, 0, 0, 20)
-remoteNameLabel.Text = "Chosen: none"
+remoteNameLabel.Text = "Выбран: none"
 remoteNameLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
 remoteNameLabel.BackgroundTransparency = 1
 remoteNameLabel.Parent = execFrame
@@ -83,7 +142,7 @@ argBox.Size = UDim2.new(1, -70, 0, 30)
 argBox.Position = UDim2.new(0, 0, 0, 25)
 argBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 argBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-argBox.PlaceholderText = "Arguments (exmaple: 1, 'text', true, CFrame.new(0,0,0))"
+argBox.PlaceholderText = "Аргументы через запятую (например: 1, 'text', true, CFrame.new(0,0,0))"
 argBox.TextXAlignment = Enum.TextXAlignment.Left
 argBox.ClearTextOnFocus = true
 argBox.Parent = execFrame
@@ -99,15 +158,17 @@ fireBtn.Parent = execFrame
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, 0, 0, 20)
 statusLabel.Position = UDim2.new(0, 0, 0, 60)
-statusLabel.Text = "Status: Ready"
+statusLabel.Text = "Статус: готов"
 statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
 statusLabel.BackgroundTransparency = 1
 statusLabel.TextSize = 11
 statusLabel.Parent = execFrame
 
-local remotes = {}
+-- Данные
+local remotes = {} -- {name, object, type, path}
 local selectedRemote = nil
 
+-- Функция сканирования всех ремоутов
 local function scanRemotes()
     for i, v in pairs(remotes) do
         if v.button then v.button:Destroy() end
@@ -132,12 +193,15 @@ local function scanRemotes()
     findRecursive(game, "game")
     findRecursive(player, "player")
     
+    -- Сортировка по имени
     table.sort(remotes, function(a,b) return a.name < b.name end)
     
     return #remotes
 end
 
+-- Обновление списка с поиском
 local function updateList(searchText)
+    -- Очищаем список
     for _, child in pairs(listFrame:GetChildren()) do
         if child:IsA("TextButton") then child:Destroy() end
     end
@@ -180,7 +244,7 @@ local function updateList(searchText)
                 selectedRemote = remote
                 remoteNameLabel.Text = "Выбран: " .. remote.name .. " (" .. remote.type .. ")"
                 execFrame.Visible = true
-                statusLabel.Text = "Status: chosen remote"
+                statusLabel.Text = "Статус: выбран ремоут"
                 argBox.Text = ""
             end)
             
@@ -199,16 +263,20 @@ local function updateList(searchText)
     end
 end
 
+-- Вызов ремоута
 local function fireRemote()
     if not selectedRemote then
-        statusLabel.Text = "Status: Error didnt choose remote"
+        statusLabel.Text = "Статус: Ошибка - ремоут не выбран"
         return
     end
     
     local argsStr = argBox.Text
     local args = {}
-
+    
+    -- Парсим аргументы (упрощённо, для строк и чисел)
     if argsStr ~= "" then
+        -- Очень упрощённый парсинг, для полноценного лучше loadstring, но это опасно
+        -- Используем безопасный вариант: разделяем по запятой
         for token in string.gmatch(argsStr, "([^,]+)") do
             local arg = token:match("^%s*(.-)%s*$")
             -- Пробуем преобразовать в число
@@ -230,25 +298,29 @@ local function fireRemote()
     local success, err = pcall(function()
         if selectedRemote.object:IsA("RemoteEvent") then
             selectedRemote.object:FireServer(unpack(args))
-            statusLabel.Text = "Status: FireServer called with " .. #args .. " args."
+            statusLabel.Text = "Статус: FireServer вызван с " .. #args .. " арг."
         elseif selectedRemote.object:IsA("RemoteFunction") then
             local result = selectedRemote.object:InvokeServer(unpack(args))
-            statusLabel.Text = "Status: InvokeServer -> " .. tostring(result)
+            statusLabel.Text = "Статус: InvokeServer -> " .. tostring(result)
         end
     end)
     
     if not success then
-        statusLabel.Text = "Status: Error - " .. tostring(err)
+        statusLabel.Text = "Статус: Ошибка - " .. tostring(err)
     end
 end
 
+-- UI события
 toggleBtn.MouseButton1Click:Connect(function()
-    mainFrame.Visible = not mainFrame.Visible
-    if mainFrame.Visible then
-        -- Пересканируем при открытии
-        local count = scanRemotes()
-        statusLabel.Text = "Satus: found " .. count .. " remotes"
-        updateList("")
+    -- Проверяем, что это не перетаскивание (клик без движения)
+    if not btnDragging then
+        mainFrame.Visible = not mainFrame.Visible
+        if mainFrame.Visible then
+            -- Пересканируем при открытии
+            local count = scanRemotes()
+            statusLabel.Text = "Статус: найдено " .. count .. " ремоутов"
+            updateList("")
+        end
     end
 end)
 
@@ -262,13 +334,20 @@ end)
 
 fireBtn.MouseButton1Click:Connect(fireRemote)
 
+-- Хоткей Insert
 game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.Insert then
-        toggleBtn.MouseButton1Click:Fire()
+        mainFrame.Visible = not mainFrame.Visible
+        if mainFrame.Visible then
+            local count = scanRemotes()
+            statusLabel.Text = "Статус: найдено " .. count .. " ремоутов"
+            updateList("")
+        end
     end
 end)
 
+-- Перетаскивание окна
 local dragging = false
 local dragInput, dragStart, startPos
 
@@ -298,3 +377,6 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
         mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
+
+print("Remote Spy загружен. Нажми Ins или кнопку шестерёнки.")
+print("Кнопку можно перетаскивать зажав ЛКМ и двигая мышкой.")
