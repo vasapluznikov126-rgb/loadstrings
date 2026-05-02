@@ -1,0 +1,232 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local userInputService = game:GetService("UserInputService")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+
+-- СОЗДАЁМ REMOTEEVENT
+local teleportRemote = replicatedStorage:FindFirstChild("TeleportRemote")
+if not teleportRemote then
+    teleportRemote = Instance.new("RemoteEvent")
+    teleportRemote.Name = "TeleportRemote"
+    teleportRemote.Parent = replicatedStorage
+end
+
+-- ФУНКЦИЯ ТЕЛЕПОРТАЦИИ
+local function teleportTo(targetPlayer)
+    if not targetPlayer then return false end
+    
+    local targetCharacter = targetPlayer.Character
+    if not targetCharacter then return false end
+    
+    local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
+    if not targetHRP then return false end
+    
+    local myCharacter = player.Character
+    if not myCharacter then return false end
+    
+    local myHRP = myCharacter:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return false end
+    
+    local offset = Vector3.new(3, 0, 3)
+    myHRP.CFrame = targetHRP.CFrame * CFrame.new(offset)
+    
+    return true
+end
+
+-- СОЗДАНИЕ GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TeleportGUI"
+screenGui.Parent = game:GetService("CoreGui")
+screenGui.ResetOnSpawn = false
+
+-- ОСНОВНОЕ ОКНО
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 350, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -175, 0.5, -250)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+mainFrame.BackgroundTransparency = 0.05
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.fromRGB(0, 200, 255)
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- ЗАГОЛОВОК
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 45)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+titleLabel.Text = "✨ PLAYER LIST ✨"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = mainFrame
+
+-- КНОПКА ЗАКРЫТИЯ
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 45, 1, 0)
+closeButton.Position = UDim2.new(1, -45, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+closeButton.Text = "✕"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextScaled = true
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Parent = titleLabel
+
+closeButton.MouseButton1Click:Connect(function()
+    screenGui.Enabled = false
+end)
+
+-- ФРЕЙМ ДЛЯ СПИСКА
+local listFrame = Instance.new("ScrollingFrame")
+listFrame.Size = UDim2.new(1, -20, 1, -60)
+listFrame.Position = UDim2.new(0, 10, 0, 50)
+listFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+listFrame.BorderSizePixel = 1
+listFrame.BorderColor3 = Color3.fromRGB(100, 100, 150)
+listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+listFrame.ScrollBarThickness = 8
+listFrame.Parent = mainFrame
+
+local uiList = Instance.new("UIListLayout")
+uiList.Padding = UDim.new(0, 8)
+uiList.SortOrder = Enum.SortOrder.Name
+uiList.Parent = listFrame
+
+-- ПЕРЕМЕННЫЕ
+local playerButtons = {}
+
+-- ФУНКЦИЯ ОБНОВЛЕНИЯ КАНВАСА
+local function updateCanvas()
+    task.wait()
+    local contentHeight = uiList.AbsoluteContentSize.Y
+    listFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(contentHeight + 10, listFrame.AbsoluteSize.Y))
+end
+
+-- ФУНКЦИЯ ОБНОВЛЕНИЯ СПИСКА
+local function refreshPlayerList()
+    for _, btn in pairs(playerButtons) do
+        btn:Destroy()
+    end
+    playerButtons = {}
+    
+    local allPlayers = Players:GetPlayers()
+    local playersList = {}
+    
+    for _, target in ipairs(allPlayers) do
+        if target ~= player then
+            table.insert(playersList, target)
+        end
+    end
+    
+    table.sort(playersList, function(a, b)
+        return a.Name < b.Name
+    end)
+    
+    for _, target in ipairs(playersList) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 55)
+        btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
+        btn.BorderSizePixel = 2
+        btn.BorderColor3 = Color3.fromRGB(0, 200, 255)
+        btn.Text = "👤 " .. target.Name
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 18
+        btn.Font = Enum.Font.GothamBold
+        btn.Parent = listFrame
+        
+        if target.Team then
+            local teamIndicator = Instance.new("TextLabel")
+            teamIndicator.Size = UDim2.new(0, 80, 1, 0)
+            teamIndicator.Position = UDim2.new(1, -85, 0, 0)
+            teamIndicator.BackgroundTransparency = 1
+            teamIndicator.Text = "[" .. target.Team.Name .. "]"
+            teamIndicator.TextColor3 = Color3.fromRGB(150, 200, 255)
+            teamIndicator.TextSize = 12
+            teamIndicator.Font = Enum.Font.Gotham
+            teamIndicator.TextXAlignment = Enum.TextXAlignment.Right
+            teamIndicator.Parent = btn
+        end
+        
+        -- Эффект наведения
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+        end)
+        
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
+        end)
+        
+        -- ТЕЛЕПОРТ ПРИ НАЖАТИИ
+        btn.MouseButton1Click:Connect(function()
+            teleportTo(target)
+        end)
+        
+        playerButtons[target.Name] = btn
+    end
+    
+    if next(playerButtons) == nil then
+        local emptyMsg = Instance.new("TextLabel")
+        emptyMsg.Size = UDim2.new(1, 0, 0, 60)
+        emptyMsg.BackgroundTransparency = 1
+        emptyMsg.Text = "🌟 NO PLAYERS 🌟"
+        emptyMsg.TextColor3 = Color3.fromRGB(150, 150, 200)
+        emptyMsg.TextSize = 16
+        emptyMsg.Font = Enum.Font.Gotham
+        emptyMsg.Parent = listFrame
+    end
+    
+    updateCanvas()
+end
+
+-- КНОПКА ОБНОВЛЕНИЯ
+local refreshBtn = Instance.new("TextButton")
+refreshBtn.Size = UDim2.new(0, 45, 0, 45)
+refreshBtn.Position = UDim2.new(1, -55, 0, 50)
+refreshBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
+refreshBtn.BorderSizePixel = 2
+refreshBtn.BorderColor3 = Color3.fromRGB(150, 150, 200)
+refreshBtn.Text = "🔄"
+refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+refreshBtn.TextSize = 25
+refreshBtn.Font = Enum.Font.GothamBold
+refreshBtn.Parent = mainFrame
+
+refreshBtn.MouseButton1Click:Connect(function()
+    refreshPlayerList()
+    refreshBtn.Text = "✓"
+    task.wait(0.3)
+    refreshBtn.Text = "🔄"
+end)
+
+-- АВТООБНОВЛЕНИЕ
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    refreshPlayerList()
+end)
+
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.5)
+    refreshPlayerList()
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(3)
+        refreshPlayerList()
+    end
+end)
+
+refreshPlayerList()
+
+-- ГОРЯЧАЯ КЛАВИША H
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.H then
+        screenGui.Enabled = not screenGui.Enabled
+        if screenGui.Enabled then
+            refreshPlayerList()
+        end
+    end
+end)
+
