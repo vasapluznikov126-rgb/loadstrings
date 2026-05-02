@@ -27,7 +27,7 @@ local function teleportTo(targetPlayer)
     local myHRP = myCharacter:FindFirstChild("HumanoidRootPart")
     if not myHRP then return false end
     
-    local offset = Vector3.new(3, 0, 3)
+    local offset = Vector3.new(-4, 0, 0)
     myHRP.CFrame = targetHRP.CFrame * CFrame.new(offset)
     
     return true
