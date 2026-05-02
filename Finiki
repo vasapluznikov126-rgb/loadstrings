@@ -4,7 +4,7 @@ local userInputService = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
 
 -- ========== НАСТРОЙКИ ==========
-local ENLARGE_SIZE = 10000      -- Размер увеличенного хитбокса
+local ENLARGE_SIZE = 100000000000000000000000000000000000000000000      -- Размер увеличенного хитбокса
 local NORMAL_SIZE = 2            -- Нормальный размер хитбокса
 local ENLARGE_TRANSPARENCY = 0.7 -- Прозрачность для увеличенных
 local NORMAL_TRANSPARENCY = 1    -- Полностью прозрачный для нормальных
