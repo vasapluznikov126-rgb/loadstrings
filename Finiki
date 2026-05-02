@@ -1,0 +1,418 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local userInputService = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+
+-- ========== НАСТРОЙКИ ==========
+local ENLARGE_SIZE = 10000      -- Размер увеличенного хитбокса
+local NORMAL_SIZE = 2            -- Нормальный размер хитбокса
+local ENLARGE_TRANSPARENCY = 0.7 -- Прозрачность для увеличенных
+local NORMAL_TRANSPARENCY = 1    -- Полностью прозрачный для нормальных
+
+_G.Enabled = true  -- true = скрипт работает
+
+-- БЕЛЫЙ СПИСОК (игроки с НОРМАЛЬНЫМ хитбоксом)
+local whitelist = {}
+
+-- ========== ФУНКЦИЯ ПРИМЕНЕНИЯ ИЗМЕНЕНИЙ ==========
+local function applyHitboxChanges()
+    if not _G.Enabled then return end
+    
+    for _, target in pairs(Players:GetPlayers()) do
+        if target ~= player then
+            local isWhitelisted = false
+            for _, name in ipairs(whitelist) do
+                if name == target.Name then
+                    isWhitelisted = true
+                    break
+                end
+            end
+            
+            pcall(function()
+                if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = target.Character.HumanoidRootPart
+                    
+                    if isWhitelisted then
+                        -- В белом списке: НОРМАЛЬНЫЙ хитбокс
+                        if hrp.Size ~= Vector3.new(NORMAL_SIZE, NORMAL_SIZE, NORMAL_SIZE) then
+                            hrp.Size = Vector3.new(NORMAL_SIZE, NORMAL_SIZE, NORMAL_SIZE)
+                            hrp.Transparency = NORMAL_TRANSPARENCY
+                        end
+                    else
+                        -- НЕ в белом списке: БОЛЬШОЙ хитбокс
+                        if hrp.Size ~= Vector3.new(ENLARGE_SIZE, ENLARGE_SIZE, ENLARGE_SIZE) then
+                            hrp.Size = Vector3.new(ENLARGE_SIZE, ENLARGE_SIZE, ENLARGE_SIZE)
+                            hrp.Transparency = ENLARGE_TRANSPARENCY
+                            hrp.BrickColor = BrickColor.new("Really blue")
+                            hrp.Material = Enum.Material.Neon
+                            hrp.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end
+
+-- ========== СОЗДАНИЕ GUI ==========
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "HitboxGUI"
+screenGui.Parent = game:GetService("CoreGui")
+screenGui.ResetOnSpawn = false
+
+-- ОСНОВНОЕ ОКНО
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 420, 0, 520)
+mainFrame.Position = UDim2.new(0.5, -210, 0.5, -260)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+mainFrame.BackgroundTransparency = 0.05
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.fromRGB(0, 200, 255)
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- ЗАГОЛОВОК
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 45)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+titleLabel.Text = "🎯 HITBOX CONTROLLER 🎯"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = mainFrame
+
+-- КНОПКА ЗАКРЫТИЯ
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 45, 1, 0)
+closeButton.Position = UDim2.new(1, -45, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+closeButton.Text = "✕"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextScaled = true
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Parent = titleLabel
+
+closeButton.MouseButton1Click:Connect(function()
+    screenGui.Enabled = false
+end)
+
+-- СТАТУС БАР
+local statusFrame = Instance.new("Frame")
+statusFrame.Size = UDim2.new(1, -20, 0, 50)
+statusFrame.Position = UDim2.new(0, 10, 0, 55)
+statusFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+statusFrame.BorderSizePixel = 1
+statusFrame.BorderColor3 = Color3.fromRGB(80, 80, 120)
+statusFrame.Parent = mainFrame
+
+local statusText = Instance.new("TextLabel")
+statusText.Size = UDim2.new(1, 0, 1, 0)
+statusText.BackgroundTransparency = 1
+statusText.Text = "🟢 SCRIPT ACTIVE"
+statusText.TextColor3 = Color3.fromRGB(100, 255, 100)
+statusText.TextSize = 18
+statusText.Font = Enum.Font.GothamBold
+statusText.Parent = statusFrame
+
+-- КНОПКА ВКЛ/ВЫКЛ (рядом с заголовком)
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 120, 0, 35)
+toggleBtn.Position = UDim2.new(1, -170, 0, 8)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+toggleBtn.Text = "🔴 DISABLE"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.TextSize = 14
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.Parent = mainFrame
+
+toggleBtn.MouseButton1Click:Connect(function()
+    _G.Enabled = not _G.Enabled
+    if _G.Enabled then
+        toggleBtn.Text = "🔴 DISABLE"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        statusText.Text = "🟢 SCRIPT ACTIVE"
+        statusText.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        toggleBtn.Text = "🟢 ENABLE"
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+        statusText.Text = "🔴 SCRIPT DISABLED"
+        statusText.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+    print("⭐ Script: " .. (_G.Enabled and "ENABLED" or "DISABLED"))
+end)
+
+-- ЛЕВАЯ ПАНЕЛЬ (Белый список)
+local whitelistFrame = Instance.new("Frame")
+whitelistFrame.Size = UDim2.new(0.48, -5, 0, 350)
+whitelistFrame.Position = UDim2.new(0, 10, 0, 115)
+whitelistFrame.BackgroundColor3 = Color3.fromRGB(25, 35, 25)
+whitelistFrame.BorderSizePixel = 1
+whitelistFrame.BorderColor3 = Color3.fromRGB(100, 200, 100)
+whitelistFrame.Parent = mainFrame
+
+local whitelistTitle = Instance.new("TextLabel")
+whitelistTitle.Size = UDim2.new(1, 0, 0, 30)
+whitelistTitle.Position = UDim2.new(0, 0, 0, 0)
+whitelistTitle.BackgroundColor3 = Color3.fromRGB(40, 70, 40)
+whitelistTitle.Text = "🛡️ WHITELIST (NORMAL HITBOX)"
+whitelistTitle.TextColor3 = Color3.fromRGB(150, 255, 150)
+whitelistTitle.TextSize = 11
+whitelistTitle.Font = Enum.Font.GothamBold
+whitelistTitle.Parent = whitelistFrame
+
+local whitelistScroll = Instance.new("ScrollingFrame")
+whitelistScroll.Size = UDim2.new(1, -10, 1, -40)
+whitelistScroll.Position = UDim2.new(0, 5, 0, 35)
+whitelistScroll.BackgroundColor3 = Color3.fromRGB(20, 30, 20)
+whitelistScroll.BorderSizePixel = 0
+whitelistScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+whitelistScroll.ScrollBarThickness = 6
+whitelistScroll.Parent = whitelistFrame
+
+local whitelistLayout = Instance.new("UIListLayout")
+whitelistLayout.Padding = UDim.new(0, 4)
+whitelistLayout.SortOrder = Enum.SortOrder.Name
+whitelistLayout.Parent = whitelistScroll
+
+-- ПРАВАЯ ПАНЕЛЬ (Игроки)
+local playersFrame = Instance.new("Frame")
+playersFrame.Size = UDim2.new(0.48, -5, 0, 350)
+playersFrame.Position = UDim2.new(0.52, -5, 0, 115)
+playersFrame.BackgroundColor3 = Color3.fromRGB(35, 25, 35)
+playersFrame.BorderSizePixel = 1
+playersFrame.BorderColor3 = Color3.fromRGB(200, 100, 100)
+playersFrame.Parent = mainFrame
+
+local playersTitle = Instance.new("TextLabel")
+playersTitle.Size = UDim2.new(1, 0, 0, 30)
+playersTitle.Position = UDim2.new(0, 0, 0, 0)
+playersTitle.BackgroundColor3 = Color3.fromRGB(70, 40, 40)
+playersTitle.Text = "👥 ALL PLAYERS (BIG HITBOX)"
+playersTitle.TextColor3 = Color3.fromRGB(255, 150, 150)
+playersTitle.TextSize = 11
+playersTitle.Font = Enum.Font.GothamBold
+playersTitle.Parent = playersFrame
+
+local playersScroll = Instance.new("ScrollingFrame")
+playersScroll.Size = UDim2.new(1, -10, 1, -40)
+playersScroll.Position = UDim2.new(0, 5, 0, 35)
+playersScroll.BackgroundColor3 = Color3.fromRGB(30, 20, 20)
+playersScroll.BorderSizePixel = 0
+playersScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+playersScroll.ScrollBarThickness = 6
+playersScroll.Parent = playersFrame
+
+local playersLayout = Instance.new("UIListLayout")
+playersLayout.Padding = UDim.new(0, 4)
+playersLayout.SortOrder = Enum.SortOrder.Name
+playersLayout.Parent = playersScroll
+
+-- НИЖНЯЯ ПАНЕЛЬ (Кнопки)
+local bottomFrame = Instance.new("Frame")
+bottomFrame.Size = UDim2.new(1, -20, 0, 40)
+bottomFrame.Position = UDim2.new(0, 10, 1, -50)
+bottomFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+bottomFrame.BorderSizePixel = 1
+bottomFrame.BorderColor3 = Color3.fromRGB(100, 100, 150)
+bottomFrame.Parent = mainFrame
+
+local hintLabel = Instance.new("TextLabel")
+hintLabel.Size = UDim2.new(0.6, 0, 1, 0)
+hintLabel.BackgroundTransparency = 1
+hintLabel.Text = "💡 Press H to open/close"
+hintLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+hintLabel.TextSize = 12
+hintLabel.Font = Enum.Font.Gotham
+hintLabel.TextXAlignment = Enum.TextXAlignment.Left
+hintLabel.Parent = bottomFrame
+
+local clearBtn = Instance.new("TextButton")
+clearBtn.Size = UDim2.new(0, 100, 1, -5)
+clearBtn.Position = UDim2.new(1, -105, 0, 2)
+clearBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+clearBtn.Text = "CLEAR ALL"
+clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+clearBtn.TextSize = 12
+clearBtn.Font = Enum.Font.GothamBold
+clearBtn.Parent = bottomFrame
+
+-- ========== ФУНКЦИИ ОБНОВЛЕНИЯ GUI ==========
+
+local function updateWhitelistGUI()
+    for _, child in pairs(whitelistScroll:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    for _, name in ipairs(whitelist) do
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, -10, 0, 32)
+        frame.BackgroundColor3 = Color3.fromRGB(40, 55, 40)
+        frame.BorderSizePixel = 1
+        frame.BorderColor3 = Color3.fromRGB(80, 150, 80)
+        frame.Parent = whitelistScroll
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -50, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = "🛡️ " .. name
+        label.TextColor3 = Color3.fromRGB(150, 255, 150)
+        label.TextSize = 12
+        label.Font = Enum.Font.Gotham
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = frame
+        
+        local removeBtn = Instance.new("TextButton")
+        removeBtn.Size = UDim2.new(0, 40, 1, -4)
+        removeBtn.Position = UDim2.new(1, -45, 0, 2)
+        removeBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        removeBtn.Text = "❌"
+        removeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        removeBtn.TextSize = 14
+        removeBtn.Font = Enum.Font.GothamBold
+        removeBtn.Parent = frame
+        
+        removeBtn.MouseButton1Click:Connect(function()
+            for i, wName in ipairs(whitelist) do
+                if wName == name then
+                    table.remove(whitelist, i)
+                    break
+                end
+            end
+            updateWhitelistGUI()
+            updatePlayersGUI()
+            print("❌ Removed from whitelist: " .. name)
+        end)
+    end
+    
+    if #whitelist == 0 then
+        local empty = Instance.new("TextLabel")
+        empty.Size = UDim2.new(1, -10, 0, 40)
+        empty.BackgroundTransparency = 1
+        empty.Text = "📭 Empty"
+        empty.TextColor3 = Color3.fromRGB(100, 150, 100)
+        empty.TextSize = 12
+        empty.Font = Enum.Font.Gotham
+        empty.Parent = whitelistScroll
+    end
+    
+    task.wait()
+    whitelistScroll.CanvasSize = UDim2.new(0, 0, 0, whitelistLayout.AbsoluteContentSize.Y + 10)
+end
+
+local function updatePlayersGUI()
+    for _, child in pairs(playersScroll:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    local allPlayers = {}
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= player then
+            table.insert(allPlayers, v)
+        end
+    end
+    table.sort(allPlayers, function(a, b) return a.Name < b.Name end)
+    
+    for _, target in ipairs(allPlayers) do
+        local inWhitelist = false
+        for _, wName in ipairs(whitelist) do
+            if wName == target.Name then
+                inWhitelist = true
+                break
+            end
+        end
+        
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 38)
+        btn.BackgroundColor3 = inWhitelist and Color3.fromRGB(50, 80, 50) or Color3.fromRGB(80, 50, 50)
+        btn.BorderSizePixel = 1
+        btn.BorderColor3 = inWhitelist and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(200, 100, 100)
+        btn.Text = (inWhitelist and "✅ " or "➕ ") .. target.Name
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 13
+        btn.Font = Enum.Font.Gotham
+        btn.Parent = playersScroll
+        
+        if not inWhitelist then
+            btn.MouseButton1Click:Connect(function()
+                table.insert(whitelist, target.Name)
+                updateWhitelistGUI()
+                updatePlayersGUI()
+                print("✅ Added to whitelist: " .. target.Name)
+            end)
+        end
+    end
+    
+    if #allPlayers == 0 then
+        local empty = Instance.new("TextLabel")
+        empty.Size = UDim2.new(1, -10, 0, 40)
+        empty.BackgroundTransparency = 1
+        empty.Text = "🌟 No other players"
+        empty.TextColor3 = Color3.fromRGB(150, 100, 100)
+        empty.TextSize = 12
+        empty.Font = Enum.Font.Gotham
+        empty.Parent = playersScroll
+    end
+    
+    task.wait()
+    playersScroll.CanvasSize = UDim2.new(0, 0, 0, playersLayout.AbsoluteContentSize.Y + 10)
+end
+
+-- КНОПКА ОЧИСТКИ
+clearBtn.MouseButton1Click:Connect(function()
+    for i = #whitelist, 1, -1 do
+        table.remove(whitelist, i)
+    end
+    updateWhitelistGUI()
+    updatePlayersGUI()
+    print("🗑️ Whitelist cleared!")
+end)
+
+-- ========== ОСНОВНОЙ ЦИКЛ ==========
+runService.RenderStepped:Connect(function()
+    applyHitboxChanges()
+end)
+
+-- ========== СОБЫТИЯ ==========
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    updatePlayersGUI()
+    updateWhitelistGUI()
+end)
+
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.5)
+    updatePlayersGUI()
+    updateWhitelistGUI()
+end)
+
+-- Периодическое обновление
+task.spawn(function()
+    while true do
+        task.wait(5)
+        updatePlayersGUI()
+        updateWhitelistGUI()
+    end
+end)
+
+-- ========== ГОРЯЧАЯ КЛАВИША ==========
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.H then
+        screenGui.Enabled = not screenGui.Enabled
+        if screenGui.Enabled then
+            updatePlayersGUI()
+            updateWhitelistGUI()
+        end
+    end
+end)
+
+-- ========== ЗАПУСК ==========
+updateWhitelistGUI()
+updatePlayersGUI()
+applyHitboxChanges()
