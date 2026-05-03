@@ -1,3 +1,5 @@
+-- Поместить в CoreGui
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local userInputService = game:GetService("UserInputService")
@@ -95,6 +97,7 @@ uiList.Parent = listFrame
 
 -- ПЕРЕМЕННЫЕ
 local playerButtons = {}
+local emptyMessage = nil
 
 -- ФУНКЦИЯ ОБНОВЛЕНИЯ КАНВАСА
 local function updateCanvas()
@@ -105,10 +108,17 @@ end
 
 -- ФУНКЦИЯ ОБНОВЛЕНИЯ СПИСКА
 local function refreshPlayerList()
+    -- Удаляем все кнопки игроков
     for _, btn in pairs(playerButtons) do
         btn:Destroy()
     end
     playerButtons = {}
+    
+    -- Удаляем пустое сообщение если оно есть
+    if emptyMessage then
+        emptyMessage:Destroy()
+        emptyMessage = nil
+    end
     
     local allPlayers = Players:GetPlayers()
     local playersList = {}
@@ -123,57 +133,59 @@ local function refreshPlayerList()
         return a.Name < b.Name
     end)
     
-    for _, target in ipairs(playersList) do
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -10, 0, 55)
-        btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
-        btn.BorderSizePixel = 2
-        btn.BorderColor3 = Color3.fromRGB(0, 200, 255)
-        btn.Text = "👤 " .. target.Name
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.TextSize = 18
-        btn.Font = Enum.Font.GothamBold
-        btn.Parent = listFrame
-        
-        if target.Team then
-            local teamIndicator = Instance.new("TextLabel")
-            teamIndicator.Size = UDim2.new(0, 80, 1, 0)
-            teamIndicator.Position = UDim2.new(1, -85, 0, 0)
-            teamIndicator.BackgroundTransparency = 1
-            teamIndicator.Text = "[" .. target.Team.Name .. "]"
-            teamIndicator.TextColor3 = Color3.fromRGB(150, 200, 255)
-            teamIndicator.TextSize = 12
-            teamIndicator.Font = Enum.Font.Gotham
-            teamIndicator.TextXAlignment = Enum.TextXAlignment.Right
-            teamIndicator.Parent = btn
-        end
-        
-        -- Эффект наведения
-        btn.MouseEnter:Connect(function()
-            btn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
-        end)
-        
-        btn.MouseLeave:Connect(function()
+    -- Если есть игроки - создаём кнопки
+    if #playersList > 0 then
+        for _, target in ipairs(playersList) do
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, -10, 0, 55)
             btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
-        end)
-        
-        -- ТЕЛЕПОРТ ПРИ НАЖАТИИ
-        btn.MouseButton1Click:Connect(function()
-            teleportTo(target)
-        end)
-        
-        playerButtons[target.Name] = btn
-    end
-    
-    if next(playerButtons) == nil then
-        local emptyMsg = Instance.new("TextLabel")
-        emptyMsg.Size = UDim2.new(1, 0, 0, 60)
-        emptyMsg.BackgroundTransparency = 1
-        emptyMsg.Text = "🌟 NO PLAYERS 🌟"
-        emptyMsg.TextColor3 = Color3.fromRGB(150, 150, 200)
-        emptyMsg.TextSize = 16
-        emptyMsg.Font = Enum.Font.Gotham
-        emptyMsg.Parent = listFrame
+            btn.BorderSizePixel = 2
+            btn.BorderColor3 = Color3.fromRGB(0, 200, 255)
+            btn.Text = "👤 " .. target.Name
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.TextSize = 18
+            btn.Font = Enum.Font.GothamBold
+            btn.Parent = listFrame
+            
+            if target.Team then
+                local teamIndicator = Instance.new("TextLabel")
+                teamIndicator.Size = UDim2.new(0, 80, 1, 0)
+                teamIndicator.Position = UDim2.new(1, -85, 0, 0)
+                teamIndicator.BackgroundTransparency = 1
+                teamIndicator.Text = "[" .. target.Team.Name .. "]"
+                teamIndicator.TextColor3 = Color3.fromRGB(150, 200, 255)
+                teamIndicator.TextSize = 12
+                teamIndicator.Font = Enum.Font.Gotham
+                teamIndicator.TextXAlignment = Enum.TextXAlignment.Right
+                teamIndicator.Parent = btn
+            end
+            
+            -- Эффект наведения
+            btn.MouseEnter:Connect(function()
+                btn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+            end)
+            
+            btn.MouseLeave:Connect(function()
+                btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
+            end)
+            
+            -- ТЕЛЕПОРТ ПРИ НАЖАТИИ
+            btn.MouseButton1Click:Connect(function()
+                teleportTo(target)
+            end)
+            
+            playerButtons[target.Name] = btn
+        end
+    else
+        -- Если нет игроков - показываем одно сообщение (не спамим)
+        emptyMessage = Instance.new("TextLabel")
+        emptyMessage.Size = UDim2.new(1, 0, 0, 60)
+        emptyMessage.BackgroundTransparency = 1
+        emptyMessage.Text = "🌟 NO PLAYERS 🌟"
+        emptyMessage.TextColor3 = Color3.fromRGB(150, 150, 200)
+        emptyMessage.TextSize = 16
+        emptyMessage.Font = Enum.Font.Gotham
+        emptyMessage.Parent = listFrame
     end
     
     updateCanvas()
@@ -218,15 +230,3 @@ task.spawn(function()
 end)
 
 refreshPlayerList()
-
--- ГОРЯЧАЯ КЛАВИША H
-userInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.H then
-        screenGui.Enabled = not screenGui.Enabled
-        if screenGui.Enabled then
-            refreshPlayerList()
-        end
-    end
-end)
-
