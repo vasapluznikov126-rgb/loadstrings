@@ -13,8 +13,22 @@ if not teleportRemote then
     teleportRemote.Parent = replicatedStorage
 end
 
--- ФУНКЦИЯ ТЕЛЕПОРТАЦИИ
-local function teleportTo(targetPlayer)
+-- КООРДИНАТЫ ДЛЯ ТЕЛЕПОРТАЦИИ
+local teleportLocations = {
+    {
+        name = "🏠 CENTER",
+        position = Vector3.new(-37.8, 952.5, 777.5),
+        color = Color3.fromRGB(0, 200, 255)
+    },
+    {
+        name = "🏠 ROOF",
+        position = Vector3.new(-37.8, 1489.5, 777.5),
+        color = Color3.fromRGB(255, 150, 0)
+    }
+}
+
+-- ФУНКЦИЯ ТЕЛЕПОРТАЦИИ К ИГРОКУ
+local function teleportToPlayer(targetPlayer)
     if not targetPlayer then return false end
     
     local targetCharacter = targetPlayer.Character
@@ -35,6 +49,18 @@ local function teleportTo(targetPlayer)
     return true
 end
 
+-- ФУНКЦИЯ ТЕЛЕПОРТАЦИИ ПО КООРДИНАТАМ
+local function teleportToPosition(position)
+    local myCharacter = player.Character
+    if not myCharacter then return false end
+    
+    local myHRP = myCharacter:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return false end
+    
+    myHRP.CFrame = CFrame.new(position)
+    return true
+end
+
 -- СОЗДАНИЕ GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TeleportGUI"
@@ -43,8 +69,8 @@ screenGui.ResetOnSpawn = false
 
 -- ОСНОВНОЕ ОКНО
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 350, 0, 500)
-mainFrame.Position = UDim2.new(0.5, -175, 0.5, -250)
+mainFrame.Size = UDim2.new(0, 400, 0, 550)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -275)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
 mainFrame.BackgroundTransparency = 0.05
 mainFrame.BorderSizePixel = 2
@@ -58,7 +84,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, 0, 0, 45)
 titleLabel.Position = UDim2.new(0, 0, 0, 0)
 titleLabel.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
-titleLabel.Text = "✨ PLAYER LIST ✨"
+titleLabel.Text = "✨ TELEPORT MENU ✨"
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextScaled = true
 titleLabel.Font = Enum.Font.GothamBold
@@ -79,63 +105,138 @@ closeButton.MouseButton1Click:Connect(function()
     screenGui.Enabled = false
 end)
 
--- ФРЕЙМ ДЛЯ СПИСКА
-local listFrame = Instance.new("ScrollingFrame")
-listFrame.Size = UDim2.new(1, -20, 1, -60)
-listFrame.Position = UDim2.new(0, 10, 0, 50)
-listFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-listFrame.BorderSizePixel = 1
-listFrame.BorderColor3 = Color3.fromRGB(100, 100, 150)
-listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-listFrame.ScrollBarThickness = 8
-listFrame.Parent = mainFrame
+-- ========== ВКЛАДКИ ==========
+local tabFrame = Instance.new("Frame")
+tabFrame.Size = UDim2.new(1, 0, 0, 40)
+tabFrame.Position = UDim2.new(0, 0, 0, 50)
+tabFrame.BackgroundTransparency = 1
+tabFrame.Parent = mainFrame
 
-local uiList = Instance.new("UIListLayout")
-uiList.Padding = UDim.new(0, 8)
-uiList.SortOrder = Enum.SortOrder.Name
-uiList.Parent = listFrame
+-- Кнопка вкладки "Игроки"
+local playersTab = Instance.new("TextButton")
+playersTab.Size = UDim2.new(0.5, -2, 1, -5)
+playersTab.Position = UDim2.new(0, 2, 0, 2)
+playersTab.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+playersTab.BorderSizePixel = 0
+playersTab.Text = "👥 PLAYERS"
+playersTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+playersTab.TextSize = 18
+playersTab.Font = Enum.Font.GothamBold
+playersTab.Parent = tabFrame
 
--- ПЕРЕМЕННЫЕ
+-- Кнопка вкладки "Локации"
+local locationsTab = Instance.new("TextButton")
+locationsTab.Size = UDim2.new(0.5, -2, 1, -5)
+locationsTab.Position = UDim2.new(0.5, 0, 0, 2)
+locationsTab.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+locationsTab.BorderSizePixel = 0
+locationsTab.Text = "📍 LOCATIONS"
+locationsTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+locationsTab.TextSize = 18
+locationsTab.Font = Enum.Font.GothamBold
+locationsTab.Parent = tabFrame
+
+-- ========== КОНТЕЙНЕРЫ ДЛЯ ВКЛАДОК ==========
+-- Контейнер для списка игроков
+local playersContainer = Instance.new("ScrollingFrame")
+playersContainer.Size = UDim2.new(1, -20, 1, -110)
+playersContainer.Position = UDim2.new(0, 10, 0, 95)
+playersContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+playersContainer.BorderSizePixel = 1
+playersContainer.BorderColor3 = Color3.fromRGB(100, 100, 150)
+playersContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+playersContainer.ScrollBarThickness = 8
+playersContainer.Visible = true
+playersContainer.Parent = mainFrame
+
+local playersList = Instance.new("UIListLayout")
+playersList.Padding = UDim.new(0, 8)
+playersList.SortOrder = Enum.SortOrder.Name
+playersList.Parent = playersContainer
+
+-- Контейнер для списка локаций
+local locationsContainer = Instance.new("ScrollingFrame")
+locationsContainer.Size = UDim2.new(1, -20, 1, -110)
+locationsContainer.Position = UDim2.new(0, 10, 0, 95)
+locationsContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+locationsContainer.BorderSizePixel = 1
+locationsContainer.BorderColor3 = Color3.fromRGB(100, 100, 150)
+locationsContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+locationsContainer.ScrollBarThickness = 8
+locationsContainer.Visible = false
+locationsContainer.Parent = mainFrame
+
+local locationsList = Instance.new("UIListLayout")
+locationsList.Padding = UDim.new(0, 8)
+locationsList.SortOrder = Enum.SortOrder.Name
+locationsList.Parent = locationsContainer
+
+-- ========== ЛОГИКА ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК ==========
+playersTab.MouseButton1Click:Connect(function()
+    playersContainer.Visible = true
+    locationsContainer.Visible = false
+    playersTab.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+    playersTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    locationsTab.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+    locationsTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    refreshPlayersList()
+end)
+
+locationsTab.MouseButton1Click:Connect(function()
+    playersContainer.Visible = false
+    locationsContainer.Visible = true
+    locationsTab.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+    locationsTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    playersTab.BackgroundColor3 = Color3.fromRGB(50, 50, 80)
+    playersTab.TextColor3 = Color3.fromRGB(200, 200, 200)
+    refreshLocationsList()
+end)
+
+-- ========== ПЕРЕМЕННЫЕ ==========
 local playerButtons = {}
-local emptyMessage = nil
+local playersEmptyMsg = nil
 
--- ФУНКЦИЯ ОБНОВЛЕНИЯ КАНВАСА
-local function updateCanvas()
+-- ========== ФУНКЦИИ ОБНОВЛЕНИЯ КАНВАСА ==========
+local function updatePlayersCanvas()
     task.wait()
-    local contentHeight = uiList.AbsoluteContentSize.Y
-    listFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(contentHeight + 10, listFrame.AbsoluteSize.Y))
+    local contentHeight = playersList.AbsoluteContentSize.Y
+    playersContainer.CanvasSize = UDim2.new(0, 0, 0, math.max(contentHeight + 10, playersContainer.AbsoluteSize.Y))
 end
 
--- ФУНКЦИЯ ОБНОВЛЕНИЯ СПИСКА
-local function refreshPlayerList()
-    -- Удаляем все кнопки игроков
+local function updateLocationsCanvas()
+    task.wait()
+    local contentHeight = locationsList.AbsoluteContentSize.Y
+    locationsContainer.CanvasSize = UDim2.new(0, 0, 0, math.max(contentHeight + 10, locationsContainer.AbsoluteSize.Y))
+end
+
+-- ========== ОБНОВЛЕНИЕ СПИСКА ИГРОКОВ ==========
+local function refreshPlayersList()
+    -- Удаляем все кнопки
     for _, btn in pairs(playerButtons) do
         btn:Destroy()
     end
     playerButtons = {}
     
-    -- Удаляем пустое сообщение если оно есть
-    if emptyMessage then
-        emptyMessage:Destroy()
-        emptyMessage = nil
+    if playersEmptyMsg then
+        playersEmptyMsg:Destroy()
+        playersEmptyMsg = nil
     end
     
     local allPlayers = Players:GetPlayers()
-    local playersList = {}
+    local playersListData = {}
     
     for _, target in ipairs(allPlayers) do
         if target ~= player then
-            table.insert(playersList, target)
+            table.insert(playersListData, target)
         end
     end
     
-    table.sort(playersList, function(a, b)
+    table.sort(playersListData, function(a, b)
         return a.Name < b.Name
     end)
     
-    -- Если есть игроки - создаём кнопки
-    if #playersList > 0 then
-        for _, target in ipairs(playersList) do
+    if #playersListData > 0 then
+        for _, target in ipairs(playersListData) do
             local btn = Instance.new("TextButton")
             btn.Size = UDim2.new(1, -10, 0, 55)
             btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
@@ -145,7 +246,7 @@ local function refreshPlayerList()
             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
             btn.TextSize = 18
             btn.Font = Enum.Font.GothamBold
-            btn.Parent = listFrame
+            btn.Parent = playersContainer
             
             if target.Team then
                 local teamIndicator = Instance.new("TextLabel")
@@ -169,29 +270,106 @@ local function refreshPlayerList()
                 btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
             end)
             
-            -- ТЕЛЕПОРТ ПРИ НАЖАТИИ
+            -- Телепорт при нажатии
             btn.MouseButton1Click:Connect(function()
-                teleportTo(target)
+                teleportToPlayer(target)
             end)
             
             playerButtons[target.Name] = btn
         end
     else
-        -- Если нет игроков - показываем одно сообщение (не спамим)
-        emptyMessage = Instance.new("TextLabel")
-        emptyMessage.Size = UDim2.new(1, 0, 0, 60)
-        emptyMessage.BackgroundTransparency = 1
-        emptyMessage.Text = "🌟 NO PLAYERS 🌟"
-        emptyMessage.TextColor3 = Color3.fromRGB(150, 150, 200)
-        emptyMessage.TextSize = 16
-        emptyMessage.Font = Enum.Font.Gotham
-        emptyMessage.Parent = listFrame
+        playersEmptyMsg = Instance.new("TextLabel")
+        playersEmptyMsg.Size = UDim2.new(1, 0, 0, 60)
+        playersEmptyMsg.BackgroundTransparency = 1
+        playersEmptyMsg.Text = "🌟 NO PLAYERS 🌟"
+        playersEmptyMsg.TextColor3 = Color3.fromRGB(150, 150, 200)
+        playersEmptyMsg.TextSize = 16
+        playersEmptyMsg.Font = Enum.Font.Gotham
+        playersEmptyMsg.Parent = playersContainer
     end
     
-    updateCanvas()
+    updatePlayersCanvas()
 end
 
--- КНОПКА ОБНОВЛЕНИЯ
+-- ========== ОБНОВЛЕНИЕ СПИСКА ЛОКАЦИЙ ==========
+local function refreshLocationsList()
+    -- Очищаем контейнер
+    for _, child in pairs(locationsContainer:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    -- Создаём кнопки для каждой локации
+    for _, loc in ipairs(teleportLocations) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -10, 0, 70)
+        btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
+        btn.BorderSizePixel = 2
+        btn.BorderColor3 = loc.color
+        btn.Parent = locationsContainer
+        
+        -- Название локации
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLabel.Position = UDim2.new(0, 10, 0, 5)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = loc.name
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextSize = 20
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Parent = btn
+        
+        -- Координаты
+        local coordsLabel = Instance.new("TextLabel")
+        coordsLabel.Size = UDim2.new(1, 0, 0.4, 0)
+        coordsLabel.Position = UDim2.new(0, 10, 0.5, 0)
+        coordsLabel.BackgroundTransparency = 1
+        coordsLabel.Text = string.format("📍 X: %.1f  Y: %.1f  Z: %.1f", loc.position.X, loc.position.Y, loc.position.Z)
+        coordsLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+        coordsLabel.TextSize = 13
+        coordsLabel.Font = Enum.Font.Gotham
+        coordsLabel.TextXAlignment = Enum.TextXAlignment.Left
+        coordsLabel.Parent = btn
+        
+        -- Иконка телепорта
+        local iconLabel = Instance.new("TextLabel")
+        iconLabel.Size = UDim2.new(0, 50, 1, 0)
+        iconLabel.Position = UDim2.new(1, -60, 0, 0)
+        iconLabel.BackgroundTransparency = 1
+        iconLabel.Text = "🚀"
+        iconLabel.TextColor3 = loc.color
+        iconLabel.TextSize = 30
+        iconLabel.Font = Enum.Font.Gotham
+        iconLabel.Parent = btn
+        
+        -- Эффект наведения
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+            iconLabel.Text = "✨"
+        end)
+        
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
+            iconLabel.Text = "🚀"
+        end)
+        
+        -- Телепорт при нажатии
+        btn.MouseButton1Click:Connect(function()
+            teleportToPosition(loc.position)
+            -- Визуальный фидбек
+            local originalText = btn.Text
+            btn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            task.wait(0.2)
+            btn.BackgroundColor3 = Color3.fromRGB(55, 55, 80)
+        end)
+    end
+    
+    updateLocationsCanvas()
+end
+
+-- ========== КНОПКА ОБНОВЛЕНИЯ ==========
 local refreshBtn = Instance.new("TextButton")
 refreshBtn.Size = UDim2.new(0, 45, 0, 45)
 refreshBtn.Position = UDim2.new(1, -55, 0, 50)
@@ -205,28 +383,40 @@ refreshBtn.Font = Enum.Font.GothamBold
 refreshBtn.Parent = mainFrame
 
 refreshBtn.MouseButton1Click:Connect(function()
-    refreshPlayerList()
+    if playersContainer.Visible then
+        refreshPlayersList()
+    else
+        refreshLocationsList()
+    end
     refreshBtn.Text = "✓"
     task.wait(0.3)
     refreshBtn.Text = "🔄"
 end)
 
--- АВТООБНОВЛЕНИЕ
+-- ========== АВТООБНОВЛЕНИЕ ==========
 Players.PlayerAdded:Connect(function()
     task.wait(0.5)
-    refreshPlayerList()
+    if playersContainer.Visible then
+        refreshPlayersList()
+    end
 end)
 
 Players.PlayerRemoving:Connect(function()
     task.wait(0.5)
-    refreshPlayerList()
+    if playersContainer.Visible then
+        refreshPlayersList()
+    end
 end)
 
 task.spawn(function()
     while true do
         task.wait(3)
-        refreshPlayerList()
+        if playersContainer.Visible then
+            refreshPlayersList()
+        end
     end
 end)
 
-refreshPlayerList()
+-- ========== ЗАПУСК ==========
+refreshPlayersList()
+refreshLocationsList()
