@@ -16,7 +16,42 @@ _G.Enabled = true
 -- БЕЛЫЙ СПИСОК
 local whitelist = {}
 
--- ========== ФУНКЦИЯ ПРИМЕНЕНИЯ ИЗМЕНЕНИЙ ==========
+-- ========== ПЕРЕМЕННЫЕ ДЛЯ ПОВОРОТА ТОРСА ==========
+local isKeyPressed = false
+local rotateTask = nil
+
+-- ========== ФУНКЦИЯ ПОВОРОТА ТОРСА ==========
+local function rotateTorso()
+    if not _G.Enabled then return end
+    
+    local character = player.Character
+    if not character then return end
+    
+    local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("HumanoidRootPart")
+    if not torso then return end
+    
+    -- Поворачиваем торс на 90 градусов по Y
+    local targetCFrame = torso.CFrame * CFrame.Angles(0, math.rad(90), 0)
+    torso.CFrame = targetCFrame
+end
+
+local function startRotating()
+    if rotateTask then return end
+    rotateTask = runService.RenderStepped:Connect(function()
+        if isKeyPressed and _G.Enabled then
+            rotateTorso()
+        end
+    end)
+end
+
+local function stopRotating()
+    if rotateTask then
+        rotateTask:Disconnect()
+        rotateTask = nil
+    end
+end
+
+-- ========== ФУНКЦИЯ ПРИМЕНЕНИЯ ИЗМЕНЕНИЙ ХИТБОКСОВ ==========
 local function applyHitboxChanges()
     if not _G.Enabled then return end
     
@@ -53,6 +88,39 @@ local function applyHitboxChanges()
         end
     end
 end
+
+-- ========== ОБРАБОТКА КЛАВИШИ 2 ==========
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.Two then
+        isKeyPressed = true
+        startRotating()
+        print("🔘 Holding 2 - Rotating torso 90 degrees")
+    end
+end)
+
+userInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.Two then
+        isKeyPressed = false
+        stopRotating()
+        
+        -- Восстанавливаем нормальный поворот торса
+        pcall(function()
+            local character = player.Character
+            if character then
+                local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if torso and humanoidRootPart then
+                    torso.CFrame = humanoidRootPart.CFrame
+                end
+            end
+        end)
+        print("🔘 Released 2 - Torso restored")
+    end
+end)
 
 -- ========== СОЗДАНИЕ GUI ==========
 local screenGui = Instance.new("ScreenGui")
@@ -134,11 +202,15 @@ toggleBtn.MouseButton1Click:Connect(function()
         toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
         statusText.Text = "🟢 SCRIPT ACTIVE"
         statusText.TextColor3 = Color3.fromRGB(100, 255, 100)
+        if isKeyPressed then
+            startRotating()
+        end
     else
         toggleBtn.Text = "🟢 ENABLE"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
         statusText.Text = "🔴 SCRIPT DISABLED"
         statusText.TextColor3 = Color3.fromRGB(255, 100, 100)
+        stopRotating()
     end
 end)
 
@@ -217,6 +289,7 @@ bottomFrame.BorderSizePixel = 1
 bottomFrame.BorderColor3 = Color3.fromRGB(100, 100, 150)
 bottomFrame.Parent = mainFrame
 
+-- ИНФОРМАЦИЯ ОБ УПРАВЛЕНИИ
 local hintLabel = Instance.new("TextLabel")
 hintLabel.Size = UDim2.new(0.6, 0, 1, 0)
 hintLabel.BackgroundTransparency = 1
@@ -226,6 +299,17 @@ hintLabel.TextSize = 12
 hintLabel.Font = Enum.Font.Gotham
 hintLabel.TextXAlignment = Enum.TextXAlignment.Left
 hintLabel.Parent = bottomFrame
+
+local controlHint = Instance.new("TextLabel")
+controlHint.Size = UDim2.new(0.4, 0, 1, 0)
+controlHint.Position = UDim2.new(0.6, 0, 0, 0)
+controlHint.BackgroundTransparency = 1
+controlHint.Text = "⌨️ Hold 2 → Rotate torso 90°"
+controlHint.TextColor3 = Color3.fromRGB(255, 200, 100)
+controlHint.TextSize = 12
+controlHint.Font = Enum.Font.GothamBold
+controlHint.TextXAlignment = Enum.TextXAlignment.Right
+controlHint.Parent = bottomFrame
 
 local clearBtn = Instance.new("TextButton")
 clearBtn.Size = UDim2.new(0, 100, 1, -5)
@@ -244,7 +328,6 @@ local playersEmptyMsg = nil
 -- ========== ФУНКЦИИ ОБНОВЛЕНИЯ GUI ==========
 
 local function updateWhitelistGUI()
-    -- Удаляем все элементы
     for _, child in pairs(whitelistScroll:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextButton") or child:IsA("TextLabel") then
             if child ~= whitelistLayout then
@@ -253,7 +336,6 @@ local function updateWhitelistGUI()
         end
     end
     
-    -- Создаём элементы для каждого игрока в белом списке
     for _, name in ipairs(whitelist) do
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(1, -10, 0, 32)
@@ -294,7 +376,6 @@ local function updateWhitelistGUI()
         end)
     end
     
-    -- Показываем "Empty" только если список пуст
     if #whitelist == 0 then
         local empty = Instance.new("TextLabel")
         empty.Size = UDim2.new(1, -10, 0, 40)
@@ -312,7 +393,6 @@ local function updateWhitelistGUI()
 end
 
 local function updatePlayersGUI()
-    -- Удаляем все кнопки игроков
     for _, child in pairs(playersScroll:GetChildren()) do
         if child:IsA("TextButton") or child:IsA("TextLabel") then
             if child ~= playersLayout then
@@ -329,7 +409,6 @@ local function updatePlayersGUI()
     end
     table.sort(allPlayers, function(a, b) return a.Name < b.Name end)
     
-    -- Если есть игроки - создаём кнопки
     if #allPlayers > 0 then
         for _, target in ipairs(allPlayers) do
             local inWhitelist = false
@@ -360,7 +439,6 @@ local function updatePlayersGUI()
             end
         end
     else
-        -- Только одно сообщение если нет игроков
         local empty = Instance.new("TextLabel")
         empty.Size = UDim2.new(1, -10, 0, 40)
         empty.BackgroundTransparency = 1
