@@ -1,17 +1,19 @@
+-- Поместить в CoreGui
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local userInputService = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
 
 -- ========== НАСТРОЙКИ ==========
-local ENLARGE_SIZE = 10000     -- Размер увеличенного хитбокса
-local NORMAL_SIZE = 2            -- Нормальный размер хитбокса
-local ENLARGE_TRANSPARENCY = 0.7 -- Прозрачность для увеличенных
-local NORMAL_TRANSPARENCY = 1    -- Полностью прозрачный для нормальных
+local ENLARGE_SIZE = 10000
+local NORMAL_SIZE = 2
+local ENLARGE_TRANSPARENCY = 0.7
+local NORMAL_TRANSPARENCY = 1
 
-_G.Enabled = true  -- true = скрипт работает
+_G.Enabled = true
 
--- БЕЛЫЙ СПИСОК (игроки с НОРМАЛЬНЫМ хитбоксом)
+-- БЕЛЫЙ СПИСОК
 local whitelist = {}
 
 -- ========== ФУНКЦИЯ ПРИМЕНЕНИЯ ИЗМЕНЕНИЙ ==========
@@ -33,13 +35,11 @@ local function applyHitboxChanges()
                     local hrp = target.Character.HumanoidRootPart
                     
                     if isWhitelisted then
-                        -- В белом списке: НОРМАЛЬНЫЙ хитбокс
                         if hrp.Size ~= Vector3.new(NORMAL_SIZE, NORMAL_SIZE, NORMAL_SIZE) then
                             hrp.Size = Vector3.new(NORMAL_SIZE, NORMAL_SIZE, NORMAL_SIZE)
                             hrp.Transparency = NORMAL_TRANSPARENCY
                         end
                     else
-                        -- НЕ в белом списке: БОЛЬШОЙ хитбокс
                         if hrp.Size ~= Vector3.new(ENLARGE_SIZE, ENLARGE_SIZE, ENLARGE_SIZE) then
                             hrp.Size = Vector3.new(ENLARGE_SIZE, ENLARGE_SIZE, ENLARGE_SIZE)
                             hrp.Transparency = ENLARGE_TRANSPARENCY
@@ -116,7 +116,7 @@ statusText.TextSize = 18
 statusText.Font = Enum.Font.GothamBold
 statusText.Parent = statusFrame
 
--- КНОПКА ВКЛ/ВЫКЛ (рядом с заголовком)
+-- КНОПКА ВКЛ/ВЫКЛ
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 120, 0, 35)
 toggleBtn.Position = UDim2.new(1, -170, 0, 8)
@@ -140,7 +140,6 @@ toggleBtn.MouseButton1Click:Connect(function()
         statusText.Text = "🔴 SCRIPT DISABLED"
         statusText.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
-    print("⭐ Script: " .. (_G.Enabled and "ENABLED" or "DISABLED"))
 end)
 
 -- ЛЕВАЯ ПАНЕЛЬ (Белый список)
@@ -156,7 +155,7 @@ local whitelistTitle = Instance.new("TextLabel")
 whitelistTitle.Size = UDim2.new(1, 0, 0, 30)
 whitelistTitle.Position = UDim2.new(0, 0, 0, 0)
 whitelistTitle.BackgroundColor3 = Color3.fromRGB(40, 70, 40)
-whitelistTitle.Text = "🛡️ WHITELIST (NORMAL HITBOX)"
+whitelistTitle.Text = "🛡️ WHITELIST"
 whitelistTitle.TextColor3 = Color3.fromRGB(150, 255, 150)
 whitelistTitle.TextSize = 11
 whitelistTitle.Font = Enum.Font.GothamBold
@@ -189,7 +188,7 @@ local playersTitle = Instance.new("TextLabel")
 playersTitle.Size = UDim2.new(1, 0, 0, 30)
 playersTitle.Position = UDim2.new(0, 0, 0, 0)
 playersTitle.BackgroundColor3 = Color3.fromRGB(70, 40, 40)
-playersTitle.Text = "👥 ALL PLAYERS (BIG HITBOX)"
+playersTitle.Text = "👥 ALL PLAYERS"
 playersTitle.TextColor3 = Color3.fromRGB(255, 150, 150)
 playersTitle.TextSize = 11
 playersTitle.Font = Enum.Font.GothamBold
@@ -209,7 +208,7 @@ playersLayout.Padding = UDim.new(0, 4)
 playersLayout.SortOrder = Enum.SortOrder.Name
 playersLayout.Parent = playersScroll
 
--- НИЖНЯЯ ПАНЕЛЬ (Кнопки)
+-- НИЖНЯЯ ПАНЕЛЬ
 local bottomFrame = Instance.new("Frame")
 bottomFrame.Size = UDim2.new(1, -20, 0, 40)
 bottomFrame.Position = UDim2.new(0, 10, 1, -50)
@@ -238,15 +237,23 @@ clearBtn.TextSize = 12
 clearBtn.Font = Enum.Font.GothamBold
 clearBtn.Parent = bottomFrame
 
+-- ПЕРЕМЕННЫЕ ДЛЯ КОНТРОЛЯ ПУСТЫХ СООБЩЕНИЙ
+local whitelistEmptyMsg = nil
+local playersEmptyMsg = nil
+
 -- ========== ФУНКЦИИ ОБНОВЛЕНИЯ GUI ==========
 
 local function updateWhitelistGUI()
+    -- Удаляем все элементы
     for _, child in pairs(whitelistScroll:GetChildren()) do
-        if child:IsA("Frame") or child:IsA("TextButton") then
-            child:Destroy()
+        if child:IsA("Frame") or child:IsA("TextButton") or child:IsA("TextLabel") then
+            if child ~= whitelistLayout then
+                child:Destroy()
+            end
         end
     end
     
+    -- Создаём элементы для каждого игрока в белом списке
     for _, name in ipairs(whitelist) do
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(1, -10, 0, 32)
@@ -284,10 +291,10 @@ local function updateWhitelistGUI()
             end
             updateWhitelistGUI()
             updatePlayersGUI()
-            print("❌ Removed from whitelist: " .. name)
         end)
     end
     
+    -- Показываем "Empty" только если список пуст
     if #whitelist == 0 then
         local empty = Instance.new("TextLabel")
         empty.Size = UDim2.new(1, -10, 0, 40)
@@ -297,6 +304,7 @@ local function updateWhitelistGUI()
         empty.TextSize = 12
         empty.Font = Enum.Font.Gotham
         empty.Parent = whitelistScroll
+        whitelistEmptyMsg = empty
     end
     
     task.wait()
@@ -304,9 +312,12 @@ local function updateWhitelistGUI()
 end
 
 local function updatePlayersGUI()
+    -- Удаляем все кнопки игроков
     for _, child in pairs(playersScroll:GetChildren()) do
-        if child:IsA("TextButton") then
-            child:Destroy()
+        if child:IsA("TextButton") or child:IsA("TextLabel") then
+            if child ~= playersLayout then
+                child:Destroy()
+            end
         end
     end
     
@@ -318,37 +329,38 @@ local function updatePlayersGUI()
     end
     table.sort(allPlayers, function(a, b) return a.Name < b.Name end)
     
-    for _, target in ipairs(allPlayers) do
-        local inWhitelist = false
-        for _, wName in ipairs(whitelist) do
-            if wName == target.Name then
-                inWhitelist = true
-                break
+    -- Если есть игроки - создаём кнопки
+    if #allPlayers > 0 then
+        for _, target in ipairs(allPlayers) do
+            local inWhitelist = false
+            for _, wName in ipairs(whitelist) do
+                if wName == target.Name then
+                    inWhitelist = true
+                    break
+                end
+            end
+            
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, -10, 0, 38)
+            btn.BackgroundColor3 = inWhitelist and Color3.fromRGB(50, 80, 50) or Color3.fromRGB(80, 50, 50)
+            btn.BorderSizePixel = 1
+            btn.BorderColor3 = inWhitelist and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(200, 100, 100)
+            btn.Text = (inWhitelist and "✅ " or "➕ ") .. target.Name
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.TextSize = 13
+            btn.Font = Enum.Font.Gotham
+            btn.Parent = playersScroll
+            
+            if not inWhitelist then
+                btn.MouseButton1Click:Connect(function()
+                    table.insert(whitelist, target.Name)
+                    updateWhitelistGUI()
+                    updatePlayersGUI()
+                end)
             end
         end
-        
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, -10, 0, 38)
-        btn.BackgroundColor3 = inWhitelist and Color3.fromRGB(50, 80, 50) or Color3.fromRGB(80, 50, 50)
-        btn.BorderSizePixel = 1
-        btn.BorderColor3 = inWhitelist and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(200, 100, 100)
-        btn.Text = (inWhitelist and "✅ " or "➕ ") .. target.Name
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.TextSize = 13
-        btn.Font = Enum.Font.Gotham
-        btn.Parent = playersScroll
-        
-        if not inWhitelist then
-            btn.MouseButton1Click:Connect(function()
-                table.insert(whitelist, target.Name)
-                updateWhitelistGUI()
-                updatePlayersGUI()
-                print("✅ Added to whitelist: " .. target.Name)
-            end)
-        end
-    end
-    
-    if #allPlayers == 0 then
+    else
+        -- Только одно сообщение если нет игроков
         local empty = Instance.new("TextLabel")
         empty.Size = UDim2.new(1, -10, 0, 40)
         empty.BackgroundTransparency = 1
@@ -357,6 +369,7 @@ local function updatePlayersGUI()
         empty.TextSize = 12
         empty.Font = Enum.Font.Gotham
         empty.Parent = playersScroll
+        playersEmptyMsg = empty
     end
     
     task.wait()
@@ -370,7 +383,6 @@ clearBtn.MouseButton1Click:Connect(function()
     end
     updateWhitelistGUI()
     updatePlayersGUI()
-    print("🗑️ Whitelist cleared!")
 end)
 
 -- ========== ОСНОВНОЙ ЦИКЛ ==========
