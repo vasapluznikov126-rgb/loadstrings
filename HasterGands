@@ -179,6 +179,22 @@ local handToAttach = {
 local activeAnimations = {}
 local animationRunning = false
 local animationCoroutine = nil
+local selectedPlayerForAnimation = nil
+
+-- Функция получения своих рук (GasterHands)
+local function getMyHands()
+    local character = player.Character
+    if not character then
+        return nil
+    end
+    
+    local gasterHands = character:FindFirstChild("GasterHands")
+    if not gasterHands then
+        return nil
+    end
+    
+    return gasterHands
+end
 
 -- Функция создания Attachment
 local function createAttachment(parent, position, name)
@@ -230,7 +246,7 @@ local function animateAttachments(attachments)
     end
     
     while animationRunning do
-        -- Фаза 1: +1 к Y координате
+        -- Фаза 1: +1 к Z координате
         statusLabel.Text = "Статус: Анимация - подъем (+1)..."
         for name, attach in pairs(attachments) do
             local origPos = originalPosValues[name]
@@ -241,12 +257,10 @@ local function animateAttachments(attachments)
         wait(0.5)
         if not animationRunning then break end
         
-        -- Фаза 2: -2 к Y координате (всего -1 от оригинала)
+        -- Фаза 2: -2 к Z координате
         statusLabel.Text = "Статус: Анимация - опускание (-2)..."
         for name, attach in pairs(attachments) do
             local origPos = originalPosValues[name]
-            -- От текущей позиции (которая orig.Y + 1) опускаем на 2, получаем orig.Y - 1
-            local currentPos = attach.Position
             local newPos = Vector3.new(origPos.X, origPos.Y, origPos.Z + 1)
             updateAttachmentPosition(attach, newPos, 0.3)
         end
@@ -278,33 +292,39 @@ local function animateAttachments(attachments)
     statusLabel.Text = "Статус: Остановлена"
 end
 
--- Функция привязки Align к аттачментам
-local function setupAlignsForHand(handModel, targetAttachment)
-    if not handModel or not targetAttachment then
-        return false
+-- Функция привязки Align к аттачментам (использует свои руки)
+local function setupAlignsForHand(handName, targetAttachment)
+    local myHands = getMyHands()
+    if not myHands then
+        return false, "Твои GasterHands не найдены"
+    end
+    
+    local handModel = myHands:FindFirstChild(handName)
+    if not handModel then
+        return false, "Рука " .. handName .. " не найдена в твоих GasterHands"
     end
     
     local handRootPart = handModel:FindFirstChild("HumanoidRootPart")
     if not handRootPart then
-        return false
+        return false, "HumanoidRootPart не найден в " .. handName
     end
     
     local mainAttach = handRootPart:FindFirstChild("MainAttach")
     if not mainAttach then
-        return false
+        return false, "MainAttach не найден в " .. handName .. ".HumanoidRootPart"
     end
     
     local alignPosition = mainAttach:FindFirstChild("AlignPosition")
     local alignOrientation = mainAttach:FindFirstChild("AlignOrientation")
     
     if not alignPosition or not alignOrientation then
-        return false
+        return false, "AlignPosition или AlignOrientation не найдены в MainAttach у " .. handName
     end
     
     alignPosition.Attachment1 = targetAttachment
     alignOrientation.Attachment1 = targetAttachment
     
-    return true
+    return true, "Успех"
 end
 
 -- Основная функция для выбранного игрока
@@ -321,6 +341,23 @@ local function setupForPlayer(targetPlayer)
             coroutine.close(animationCoroutine)
         end
         wait(0.2)
+    end
+    
+    -- Проверяем свои руки
+    local myHands = getMyHands()
+    if not myHands then
+        local notification = Instance.new("TextLabel")
+        notification.Size = UDim2.new(0, 300, 0, 40)
+        notification.Position = UDim2.new(0.5, -150, 0.8, 0)
+        notification.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        notification.Text = "❌ У тебя нет папки GasterHands в персонаже!"
+        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notification.TextSize = 14
+        notification.Font = Enum.Font.Gotham
+        notification.BackgroundTransparency = 0.2
+        notification.Parent = screenGui
+        game:GetService("Debris"):AddItem(notification, 3)
+        return
     end
     
     local targetCharacter = targetPlayer.Character
@@ -345,42 +382,29 @@ local function setupForPlayer(targetPlayer)
         return
     end
     
-    local gasterHands = targetCharacter:FindFirstChild("GasterHands")
-    if not gasterHands then
-        local notification = Instance.new("TextLabel")
-        notification.Size = UDim2.new(0, 300, 0, 40)
-        notification.Position = UDim2.new(0.5, -150, 0.8, 0)
-        notification.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
-        notification.Text = "⚠️ Папка GasterHands не найдена у " .. targetPlayer.Name
-        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
-        notification.TextSize = 14
-        notification.Font = Enum.Font.Gotham
-        notification.BackgroundTransparency = 0.2
-        notification.Parent = screenGui
-        game:GetService("Debris"):AddItem(notification, 2)
-        return
-    end
-    
     local successCount = 0
+    local failedHands = {}
     local attachments = {}
     
-    -- Создаем аттачменты и сохраняем их
+    -- Создаем аттачменты на персонаже цели
     for _, data in pairs(originalPositions) do
         local attachName = data[4]
         local attachment = createAttachment(humanoidRootPart, {data[1], data[2], data[3]}, attachName)
         attachments[attachName] = attachment
-        
-        -- Привязываем руки
-        for handName, targetAttachName in pairs(handToAttach) do
-            if targetAttachName == attachName then
-                local handModel = gasterHands:FindFirstChild(handName)
-                if handModel then
-                    if setupAlignsForHand(handModel, attachment) then
-                        successCount = successCount + 1
-                    end
-                end
-                break
+    end
+    
+    -- Привязываем СВОИ руки к аттачментам на теле цели
+    for handName, targetAttachName in pairs(handToAttach) do
+        local attachment = attachments[targetAttachName]
+        if attachment then
+            local success, message = setupAlignsForHand(handName, attachment)
+            if success then
+                successCount = successCount + 1
+            else
+                table.insert(failedHands, handName .. " (" .. message .. ")")
             end
+        else
+            table.insert(failedHands, handName .. " (аттачмент не найден)")
         end
     end
     
@@ -389,29 +413,33 @@ local function setupForPlayer(targetPlayer)
     
     -- Уведомление
     local resultNotify = Instance.new("TextLabel")
-    resultNotify.Size = UDim2.new(0, 350, 0, 50)
-    resultNotify.Position = UDim2.new(0.5, -175, 0.7, 0)
+    resultNotify.Size = UDim2.new(0, 400, 0, 60)
+    resultNotify.Position = UDim2.new(0.5, -200, 0.7, 0)
     resultNotify.BackgroundTransparency = 0.2
     resultNotify.TextColor3 = Color3.fromRGB(255, 255, 255)
-    resultNotify.TextSize = 14
+    resultNotify.TextSize = 13
     resultNotify.Font = Enum.Font.Gotham
     resultNotify.Parent = screenGui
     
     if successCount == 7 then
         resultNotify.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
-        resultNotify.Text = "✅ Успех! 7 рук привязаны. Нажми 'Запустить анимацию'"
+        resultNotify.Text = "✅ Успех! Твои 7 рук привязаны к " .. targetPlayer.Name .. "\nНажми 'Запустить анимацию'"
         resultNotify.TextColor3 = Color3.fromRGB(0, 0, 0)
+        resultNotify.Size = UDim2.new(0, 400, 0, 50)
     else
         resultNotify.BackgroundColor3 = Color3.fromRGB(255, 200, 100)
-        resultNotify.Text = "⚠️ Привязано " .. successCount .. "/7 рук, но анимация будет работать"
+        resultNotify.Text = "⚠️ Привязано " .. successCount .. "/7 рук к " .. targetPlayer.Name .. "\nПроблемы: " .. table.concat(failedHands, ", ")
     end
     
-    game:GetService("Debris"):AddItem(resultNotify, 3)
+    game:GetService("Debris"):AddItem(resultNotify, 4)
     
     -- Автоматически выбираем этого игрока для анимации
     selectedPlayerForAnimation = targetPlayer
     
     print(string.format("✅ Готово для %s: %d/7 рук привязано", targetPlayer.Name, successCount))
+    if #failedHands > 0 then
+        print("Проблемные руки: " .. table.concat(failedHands, ", "))
+    end
 end
 
 -- Запуск анимации для выбранного игрока
@@ -448,7 +476,7 @@ local function startAnimation()
     end
     
     if animationRunning then
-        notification = Instance.new("TextLabel")
+        local notification = Instance.new("TextLabel")
         notification.Size = UDim2.new(0, 250, 0, 40)
         notification.Position = UDim2.new(0.5, -125, 0.8, 0)
         notification.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
@@ -505,10 +533,18 @@ local function updatePlayerList()
     local yOffset = 0
     
     for _, otherPlayer in ipairs(players) do
+        -- Показываем всех игроков, включая себя, но с пометкой
         local playerButton = Instance.new("TextButton")
         playerButton.Size = UDim2.new(1, -10, 0, 40)
         playerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        playerButton.Text = "👤 " .. otherPlayer.Name
+        
+        if otherPlayer == player then
+            playerButton.Text = "👤 " .. otherPlayer.Name .. " (ты)"
+            playerButton.BackgroundColor3 = Color3.fromRGB(80, 80, 150)
+        else
+            playerButton.Text = "👤 " .. otherPlayer.Name
+        end
+        
         playerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
         playerButton.TextSize = 14
         playerButton.Font = Enum.Font.Gotham
@@ -519,11 +555,19 @@ local function updatePlayerList()
         buttonCorner.Parent = playerButton
         
         playerButton.MouseEnter:Connect(function()
-            playerButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            if otherPlayer == player then
+                playerButton.BackgroundColor3 = Color3.fromRGB(100, 100, 170)
+            else
+                playerButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+            end
         end)
         
         playerButton.MouseLeave:Connect(function()
-            playerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            if otherPlayer == player then
+                playerButton.BackgroundColor3 = Color3.fromRGB(80, 80, 150)
+            else
+                playerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            end
         end)
         
         playerButton.MouseButton1Click:Connect(function()
