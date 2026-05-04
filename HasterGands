@@ -1,0 +1,565 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+-- Создаем GUI меню
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AttachmentCreatorGUI"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Основное окно
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 350, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -175, 0.5, -250)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+-- Заголовок
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+title.BackgroundTransparency = 0.1
+title.Text = "🔧 Привязка рук с анимацией"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 16
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = title
+
+-- Панель управления анимацией
+local controlFrame = Instance.new("Frame")
+controlFrame.Size = UDim2.new(1, -20, 0, 80)
+controlFrame.Position = UDim2.new(0, 10, 0, 50)
+controlFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+controlFrame.BackgroundTransparency = 0.2
+controlFrame.Parent = mainFrame
+
+local controlCorner = Instance.new("UICorner")
+controlCorner.CornerRadius = UDim.new(0, 6)
+controlCorner.Parent = controlFrame
+
+-- Кнопка запуска анимации
+local animateButton = Instance.new("TextButton")
+animateButton.Size = UDim2.new(0, 140, 0, 35)
+animateButton.Position = UDim2.new(0, 10, 0, 10)
+animateButton.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+animateButton.Text = "▶ Запустить анимацию"
+animateButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+animateButton.TextSize = 13
+animateButton.Font = Enum.Font.Gotham
+animateButton.Parent = controlFrame
+
+local animateCorner = Instance.new("UICorner")
+animateCorner.CornerRadius = UDim.new(0, 5)
+animateCorner.Parent = animateButton
+
+-- Кнопка остановки анимации
+local stopButton = Instance.new("TextButton")
+stopButton.Size = UDim2.new(0, 140, 0, 35)
+stopButton.Position = UDim2.new(0, 160, 0, 10)
+stopButton.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+stopButton.Text = "⏹ Остановить"
+stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopButton.TextSize = 13
+stopButton.Font = Enum.Font.Gotham
+stopButton.Parent = controlFrame
+
+local stopCorner = Instance.new("UICorner")
+stopCorner.CornerRadius = UDim.new(0, 5)
+stopCorner.Parent = stopButton
+
+-- Текущий статус анимации
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -20, 0, 20)
+statusLabel.Position = UDim2.new(0, 10, 0, 55)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Статус: Остановлена"
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = controlFrame
+
+-- Список игроков
+local playerListFrame = Instance.new("ScrollingFrame")
+playerListFrame.Size = UDim2.new(1, -20, 1, -180)
+playerListFrame.Position = UDim2.new(0, 10, 0, 140)
+playerListFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+playerListFrame.BackgroundTransparency = 0.3
+playerListFrame.BorderSizePixel = 0
+playerListFrame.ScrollBarThickness = 6
+playerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+playerListFrame.Parent = mainFrame
+
+local listCorner = Instance.new("UICorner")
+listCorner.CornerRadius = UDim.new(0, 6)
+listCorner.Parent = playerListFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.Name
+listLayout.Padding = UDim.new(0, 5)
+listLayout.Parent = playerListFrame
+
+-- Кнопка закрытия
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 80, 0, 35)
+closeButton.Position = UDim2.new(1, -90, 1, -45)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeButton.Text = "❌ Закрыть"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextSize = 14
+closeButton.Font = Enum.Font.Gotham
+closeButton.Parent = mainFrame
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 5)
+closeCorner.Parent = closeButton
+
+closeButton.MouseButton1Click:Connect(function()
+    screenGui.Enabled = false
+end)
+
+-- Кнопка открытия
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.new(0, 120, 0, 40)
+openButton.Position = UDim2.new(0, 10, 1, -50)
+openButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+openButton.Text = "📋 Открыть меню"
+openButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+openButton.TextSize = 14
+openButton.Font = Enum.Font.Gotham
+openButton.Visible = false
+openButton.Parent = screenGui
+
+local openCorner = Instance.new("UICorner")
+openCorner.CornerRadius = UDim.new(0, 8)
+openCorner.Parent = openButton
+
+openButton.MouseButton1Click:Connect(function()
+    screenGui.Enabled = true
+    openButton.Visible = false
+end)
+
+-- Базовые координаты для 7 аттачментов
+local originalPositions = {
+    {0, -1, 1, "Attach1"},
+    {0, -1, 2, "Attach2"},
+    {0, -1, 3, "Attach3"},
+    {0, -1, 4, "Attach4"},
+    {0, -1, 5, "Attach5"},
+    {-1, -1, 5, "Attach6"},
+    {1, -1, 5, "Attach7"}
+}
+
+-- Соответствие Hand и Attach
+local handToAttach = {
+    Hand1 = "Attach1",
+    Hand2 = "Attach2",
+    Hand3 = "Attach3",
+    Hand4 = "Attach4",
+    Hand5 = "Attach5",
+    Hand6 = "Attach6",
+    Hand7 = "Attach7"
+}
+
+-- Хранилище активных анимаций
+local activeAnimations = {}
+local animationRunning = false
+local animationCoroutine = nil
+
+-- Функция создания Attachment
+local function createAttachment(parent, position, name)
+    local oldAttachment = parent:FindFirstChild(name)
+    if oldAttachment then
+        oldAttachment:Destroy()
+    end
+    
+    local attachment = Instance.new("Attachment")
+    attachment.Parent = parent
+    attachment.Name = name
+    attachment.Position = Vector3.new(position[1], position[2], position[3])
+    return attachment
+end
+
+-- Функция обновления позиции аттачмента с плавным переходом
+local function updateAttachmentPosition(attachment, newPosition, duration)
+    if not attachment then return end
+    
+    local startPos = attachment.Position
+    local endPos = newPosition
+    local startTime = tick()
+    
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        local elapsed = tick() - startTime
+        local alpha = math.min(1, elapsed / duration)
+        
+        -- Плавная интерполяция
+        local easedAlpha = alpha * alpha * (3 - 2 * alpha)
+        
+        attachment.Position = startPos:Lerp(endPos, easedAlpha)
+        
+        if alpha >= 1 then
+            connection:Disconnect()
+        end
+    end)
+end
+
+-- Анимация позиций аттачментов
+local function animateAttachments(attachments)
+    if animationRunning then return end
+    animationRunning = true
+    
+    -- Сохраняем оригинальные позиции
+    local originalPosValues = {}
+    for name, attach in pairs(attachments) do
+        originalPosValues[name] = attach.Position
+    end
+    
+    while animationRunning do
+        -- Фаза 1: +1 к Y координате
+        statusLabel.Text = "Статус: Анимация - подъем (+1)..."
+        for name, attach in pairs(attachments) do
+            local origPos = originalPosValues[name]
+            local newPos = Vector3.new(origPos.X, origPos.Y, origPos.Z - 1)
+            updateAttachmentPosition(attach, newPos, 0.3)
+        end
+        
+        wait(0.5)
+        if not animationRunning then break end
+        
+        -- Фаза 2: -2 к Y координате (всего -1 от оригинала)
+        statusLabel.Text = "Статус: Анимация - опускание (-2)..."
+        for name, attach in pairs(attachments) do
+            local origPos = originalPosValues[name]
+            -- От текущей позиции (которая orig.Y + 1) опускаем на 2, получаем orig.Y - 1
+            local currentPos = attach.Position
+            local newPos = Vector3.new(origPos.X, origPos.Y, origPos.Z + 1)
+            updateAttachmentPosition(attach, newPos, 0.3)
+        end
+        
+        wait(0.5)
+        if not animationRunning then break end
+        
+        -- Возврат к оригинальным позициям
+        statusLabel.Text = "Статус: Анимация - возврат..."
+        for name, attach in pairs(attachments) do
+            local origPos = originalPosValues[name]
+            updateAttachmentPosition(attach, origPos, 0.3)
+        end
+        
+        wait(0.5)
+        if not animationRunning then break end
+    end
+    
+    -- Гарантированный возврат к оригинальным позициям при остановке
+    if not animationRunning then
+        statusLabel.Text = "Статус: Остановлена (возврат к исходным)"
+        for name, attach in pairs(attachments) do
+            local origPos = originalPosValues[name]
+            attach.Position = origPos
+        end
+    end
+    
+    animationRunning = false
+    statusLabel.Text = "Статус: Остановлена"
+end
+
+-- Функция привязки Align к аттачментам
+local function setupAlignsForHand(handModel, targetAttachment)
+    if not handModel or not targetAttachment then
+        return false
+    end
+    
+    local handRootPart = handModel:FindFirstChild("HumanoidRootPart")
+    if not handRootPart then
+        return false
+    end
+    
+    local mainAttach = handRootPart:FindFirstChild("MainAttach")
+    if not mainAttach then
+        return false
+    end
+    
+    local alignPosition = mainAttach:FindFirstChild("AlignPosition")
+    local alignOrientation = mainAttach:FindFirstChild("AlignOrientation")
+    
+    if not alignPosition or not alignOrientation then
+        return false
+    end
+    
+    alignPosition.Attachment1 = targetAttachment
+    alignOrientation.Attachment1 = targetAttachment
+    
+    return true
+end
+
+-- Основная функция для выбранного игрока
+local function setupForPlayer(targetPlayer)
+    if not targetPlayer then
+        warn("Игрок не выбран!")
+        return
+    end
+    
+    -- Останавливаем текущую анимацию если есть
+    if animationRunning then
+        animationRunning = false
+        if animationCoroutine and coroutine.status(animationCoroutine) ~= "dead" then
+            coroutine.close(animationCoroutine)
+        end
+        wait(0.2)
+    end
+    
+    local targetCharacter = targetPlayer.Character
+    if not targetCharacter then
+        local notification = Instance.new("TextLabel")
+        notification.Size = UDim2.new(0, 250, 0, 40)
+        notification.Position = UDim2.new(0.5, -125, 0.8, 0)
+        notification.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        notification.Text = "⚠️ " .. targetPlayer.Name .. " не в игре!"
+        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notification.TextSize = 14
+        notification.Font = Enum.Font.Gotham
+        notification.BackgroundTransparency = 0.2
+        notification.Parent = screenGui
+        game:GetService("Debris"):AddItem(notification, 2)
+        return
+    end
+    
+    local humanoidRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        warn("HumanoidRootPart не найден у " .. targetPlayer.Name)
+        return
+    end
+    
+    local gasterHands = targetCharacter:FindFirstChild("GasterHands")
+    if not gasterHands then
+        local notification = Instance.new("TextLabel")
+        notification.Size = UDim2.new(0, 300, 0, 40)
+        notification.Position = UDim2.new(0.5, -150, 0.8, 0)
+        notification.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+        notification.Text = "⚠️ Папка GasterHands не найдена у " .. targetPlayer.Name
+        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notification.TextSize = 14
+        notification.Font = Enum.Font.Gotham
+        notification.BackgroundTransparency = 0.2
+        notification.Parent = screenGui
+        game:GetService("Debris"):AddItem(notification, 2)
+        return
+    end
+    
+    local successCount = 0
+    local attachments = {}
+    
+    -- Создаем аттачменты и сохраняем их
+    for _, data in pairs(originalPositions) do
+        local attachName = data[4]
+        local attachment = createAttachment(humanoidRootPart, {data[1], data[2], data[3]}, attachName)
+        attachments[attachName] = attachment
+        
+        -- Привязываем руки
+        for handName, targetAttachName in pairs(handToAttach) do
+            if targetAttachName == attachName then
+                local handModel = gasterHands:FindFirstChild(handName)
+                if handModel then
+                    if setupAlignsForHand(handModel, attachment) then
+                        successCount = successCount + 1
+                    end
+                end
+                break
+            end
+        end
+    end
+    
+    -- Сохраняем аттачменты для анимации
+    activeAnimations[targetPlayer.Name] = attachments
+    
+    -- Уведомление
+    local resultNotify = Instance.new("TextLabel")
+    resultNotify.Size = UDim2.new(0, 350, 0, 50)
+    resultNotify.Position = UDim2.new(0.5, -175, 0.7, 0)
+    resultNotify.BackgroundTransparency = 0.2
+    resultNotify.TextColor3 = Color3.fromRGB(255, 255, 255)
+    resultNotify.TextSize = 14
+    resultNotify.Font = Enum.Font.Gotham
+    resultNotify.Parent = screenGui
+    
+    if successCount == 7 then
+        resultNotify.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+        resultNotify.Text = "✅ Успех! 7 рук привязаны. Нажми 'Запустить анимацию'"
+        resultNotify.TextColor3 = Color3.fromRGB(0, 0, 0)
+    else
+        resultNotify.BackgroundColor3 = Color3.fromRGB(255, 200, 100)
+        resultNotify.Text = "⚠️ Привязано " .. successCount .. "/7 рук, но анимация будет работать"
+    end
+    
+    game:GetService("Debris"):AddItem(resultNotify, 3)
+    
+    -- Автоматически выбираем этого игрока для анимации
+    selectedPlayerForAnimation = targetPlayer
+    
+    print(string.format("✅ Готово для %s: %d/7 рук привязано", targetPlayer.Name, successCount))
+end
+
+-- Запуск анимации для выбранного игрока
+local function startAnimation()
+    if not selectedPlayerForAnimation then
+        local notification = Instance.new("TextLabel")
+        notification.Size = UDim2.new(0, 300, 0, 40)
+        notification.Position = UDim2.new(0.5, -150, 0.8, 0)
+        notification.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+        notification.Text = "⚠️ Сначала выбери игрока из списка!"
+        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notification.TextSize = 14
+        notification.Font = Enum.Font.Gotham
+        notification.BackgroundTransparency = 0.2
+        notification.Parent = screenGui
+        game:GetService("Debris"):AddItem(notification, 2)
+        return
+    end
+    
+    local attachments = activeAnimations[selectedPlayerForAnimation.Name]
+    if not attachments then
+        local notification = Instance.new("TextLabel")
+        notification.Size = UDim2.new(0, 300, 0, 40)
+        notification.Position = UDim2.new(0.5, -150, 0.8, 0)
+        notification.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        notification.Text = "❌ Аттачменты не найдены! Выбери игрока заново"
+        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notification.TextSize = 14
+        notification.Font = Enum.Font.Gotham
+        notification.BackgroundTransparency = 0.2
+        notification.Parent = screenGui
+        game:GetService("Debris"):AddItem(notification, 2)
+        return
+    end
+    
+    if animationRunning then
+        notification = Instance.new("TextLabel")
+        notification.Size = UDim2.new(0, 250, 0, 40)
+        notification.Position = UDim2.new(0.5, -125, 0.8, 0)
+        notification.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+        notification.Text = "⚠️ Анимация уже запущена!"
+        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notification.TextSize = 14
+        notification.Font = Enum.Font.Gotham
+        notification.BackgroundTransparency = 0.2
+        notification.Parent = screenGui
+        game:GetService("Debris"):AddItem(notification, 2)
+        return
+    end
+    
+    animationCoroutine = coroutine.create(function()
+        animateAttachments(attachments)
+    end)
+    coroutine.resume(animationCoroutine)
+end
+
+-- Остановка анимации
+local function stopAnimation()
+    if not animationRunning then
+        local notification = Instance.new("TextLabel")
+        notification.Size = UDim2.new(0, 250, 0, 40)
+        notification.Position = UDim2.new(0.5, -125, 0.8, 0)
+        notification.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+        notification.Text = "⚠️ Анимация и так остановлена!"
+        notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+        notification.TextSize = 14
+        notification.Font = Enum.Font.Gotham
+        notification.BackgroundTransparency = 0.2
+        notification.Parent = screenGui
+        game:GetService("Debris"):AddItem(notification, 2)
+        return
+    end
+    
+    animationRunning = false
+    statusLabel.Text = "Статус: Остановка..."
+end
+
+-- Привязка кнопок
+animateButton.MouseButton1Click:Connect(startAnimation)
+stopButton.MouseButton1Click:Connect(stopAnimation)
+
+-- Функция обновления списка игроков
+local function updatePlayerList()
+    for _, child in ipairs(playerListFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    local players = Players:GetPlayers()
+    local yOffset = 0
+    
+    for _, otherPlayer in ipairs(players) do
+        local playerButton = Instance.new("TextButton")
+        playerButton.Size = UDim2.new(1, -10, 0, 40)
+        playerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        playerButton.Text = "👤 " .. otherPlayer.Name
+        playerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        playerButton.TextSize = 14
+        playerButton.Font = Enum.Font.Gotham
+        playerButton.Parent = playerListFrame
+        
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 5)
+        buttonCorner.Parent = playerButton
+        
+        playerButton.MouseEnter:Connect(function()
+            playerButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        end)
+        
+        playerButton.MouseLeave:Connect(function()
+            playerButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        end)
+        
+        playerButton.MouseButton1Click:Connect(function()
+            setupForPlayer(otherPlayer)
+        end)
+        
+        yOffset = yOffset + 45
+    end
+    
+    playerListFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset)
+end
+
+-- Обновление списка
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    updatePlayerList()
+end)
+
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.5)
+    updatePlayerList()
+end)
+
+updatePlayerList()
+
+-- Открытие/закрытие по M
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.M then
+        screenGui.Enabled = not screenGui.Enabled
+        if screenGui.Enabled then
+            openButton.Visible = false
+            updatePlayerList()
+        else
+            openButton.Visible = true
+        end
+    end
+end)
