@@ -1,0 +1,552 @@
+-- Телепорт GUI с сохранением Y при телепорте к игрокам
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Настройки
+local settings = {
+    buttonACoords = Vector3.new(10004, 449, 31003),   -- координаты для кнопки А
+    buttonBCoords = Vector3.new(10004, 81000, 31003), -- координаты для кнопки B (обновлено)
+    lookDirection = Vector3.new(0, 1, 0)  -- смотреть вверх (по Y) для кнопки B
+}
+
+-- Переменные
+local playerButtons = {}
+
+-- Создаем GUI
+local screenGui = Instance.new("ScreenGui")
+local mainFrame = Instance.new("Frame")
+local titleLabel = Instance.new("TextLabel")
+local closeButton = Instance.new("TextButton")
+local dragFrame = Instance.new("Frame")
+
+-- Кнопка A (без направления)
+local buttonA = Instance.new("TextButton")
+local buttonALabel = Instance.new("TextLabel")
+local coordsALabel = Instance.new("TextLabel")
+
+-- Кнопка B (с направлением вверх)
+local buttonB = Instance.new("TextButton")
+local buttonBLabel = Instance.new("TextLabel")
+local coordsBLabel = Instance.new("TextLabel")
+local directionLabel = Instance.new("TextLabel")
+
+-- Информационная панель
+local infoFrame = Instance.new("Frame")
+local infoLabel = Instance.new("TextLabel")
+
+-- Список игроков
+local playerListFrame = Instance.new("Frame")
+local playerListLabel = Instance.new("TextLabel")
+local scrollFrame = Instance.new("ScrollingFrame")
+local playerListLayout = Instance.new("UIListLayout")
+
+-- Настройка основного GUI
+screenGui.Name = "TeleportGUI"
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Главное окно
+mainFrame.Name = "MainFrame"
+mainFrame.Parent = screenGui
+mainFrame.Size = UDim2.new(0, 400, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+mainFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.new(0, 0.5, 1)
+mainFrame.Active = true
+mainFrame.Draggable = false
+
+-- Скругленные углы
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+-- Область для перетаскивания
+dragFrame.Name = "DragFrame"
+dragFrame.Parent = mainFrame
+dragFrame.Size = UDim2.new(1, 0, 0, 30)
+dragFrame.Position = UDim2.new(0, 0, 0, 0)
+dragFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+dragFrame.BorderSizePixel = 0
+dragFrame.Active = true
+
+local dragCorner = Instance.new("UICorner")
+dragCorner.CornerRadius = UDim.new(0, 8)
+dragCorner.Parent = dragFrame
+
+-- Заголовок
+titleLabel.Parent = dragFrame
+titleLabel.Size = UDim2.new(1, -30, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Teleport GUI - Save Y on player teleport"
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.TextSize = 16
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Кнопка закрытия
+closeButton.Parent = dragFrame
+closeButton.Size = UDim2.new(0, 25, 0, 25)
+closeButton.Position = UDim2.new(1, -27, 0, 2)
+closeButton.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.TextSize = 16
+closeButton.Font = Enum.Font.GothamBold
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 4)
+closeCorner.Parent = closeButton
+
+-- Кнопка A (фиксированная, без направления)
+buttonA.Parent = mainFrame
+buttonA.Size = UDim2.new(0.9, 0, 0, 50)
+buttonA.Position = UDim2.new(0.05, 0, 0, 40)
+buttonA.BackgroundColor3 = Color3.new(0.3, 0.3, 0.8)
+buttonA.AutoButtonColor = true
+buttonA.Text = ""
+
+local buttonACorner = Instance.new("UICorner")
+buttonACorner.CornerRadius = UDim.new(0, 6)
+buttonACorner.Parent = buttonA
+
+buttonALabel.Parent = buttonA
+buttonALabel.Size = UDim2.new(0.3, 0, 1, 0)
+buttonALabel.Position = UDim2.new(0, 10, 0, 0)
+buttonALabel.BackgroundTransparency = 1
+buttonALabel.Text = "Кнопка A"
+buttonALabel.TextColor3 = Color3.new(1, 1, 1)
+buttonALabel.TextSize = 16
+buttonALabel.Font = Enum.Font.GothamBold
+buttonALabel.TextXAlignment = Enum.TextXAlignment.Left
+
+coordsALabel.Parent = buttonA
+coordsALabel.Size = UDim2.new(0.7, -20, 1, 0)
+coordsALabel.Position = UDim2.new(0.3, 0, 0, 0)
+coordsALabel.BackgroundTransparency = 1
+coordsALabel.Text = string.format("(%.0f, %.0f, %.0f)", 
+    settings.buttonACoords.X, settings.buttonACoords.Y, settings.buttonACoords.Z)
+coordsALabel.TextColor3 = Color3.new(0.8, 0.8, 1)
+coordsALabel.TextSize = 14
+coordsALabel.Font = Enum.Font.Gotham
+
+-- Кнопка B (фиксированная, с направлением вверх)
+buttonB.Parent = mainFrame
+buttonB.Size = UDim2.new(0.9, 0, 0, 50)
+buttonB.Position = UDim2.new(0.05, 0, 0, 100)
+buttonB.BackgroundColor3 = Color3.new(0.8, 0.3, 0.3)
+buttonB.AutoButtonColor = true
+buttonB.Text = ""
+
+local buttonBCorner = Instance.new("UICorner")
+buttonBCorner.CornerRadius = UDim.new(0, 6)
+buttonBCorner.Parent = buttonB
+
+buttonBLabel.Parent = buttonB
+buttonBLabel.Size = UDim2.new(0.3, 0, 1, 0)
+buttonBLabel.Position = UDim2.new(0, 10, 0, 0)
+buttonBLabel.BackgroundTransparency = 1
+buttonBLabel.Text = "Кнопка B"
+buttonBLabel.TextColor3 = Color3.new(1, 1, 1)
+buttonBLabel.TextSize = 16
+buttonBLabel.Font = Enum.Font.GothamBold
+buttonBLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+coordsBLabel.Parent = buttonB
+coordsBLabel.Size = UDim2.new(0.5, -20, 1, 0)
+coordsBLabel.Position = UDim2.new(0.3, 0, 0, 0)
+coordsBLabel.BackgroundTransparency = 1
+coordsBLabel.Text = string.format("(%.0f, %.0f, %.0f)", 
+    settings.buttonBCoords.X, settings.buttonBCoords.Y, settings.buttonBCoords.Z)
+coordsBLabel.TextColor3 = Color3.new(1, 0.8, 0.8)
+coordsBLabel.TextSize = 14
+coordsBLabel.Font = Enum.Font.Gotham
+
+directionLabel.Parent = buttonB
+directionLabel.Size = UDim2.new(0.2, 0, 1, 0)
+directionLabel.Position = UDim2.new(0.8, -10, 0, 0)
+directionLabel.BackgroundTransparency = 1
+directionLabel.Text = "↑"
+directionLabel.TextColor3 = Color3.new(1, 1, 0)
+directionLabel.TextSize = 24
+directionLabel.Font = Enum.Font.GothamBold
+
+-- Информационная панель
+infoFrame.Parent = mainFrame
+infoFrame.Size = UDim2.new(0.9, 0, 0, 40)
+infoFrame.Position = UDim2.new(0.05, 0, 0, 160)
+infoFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+infoFrame.BorderSizePixel = 0
+
+local infoCorner = Instance.new("UICorner")
+infoCorner.CornerRadius = UDim.new(0, 6)
+infoCorner.Parent = infoFrame
+
+infoLabel.Parent = infoFrame
+infoLabel.Size = UDim2.new(1, -10, 1, 0)
+infoLabel.Position = UDim2.new(0, 5, 0, 0)
+infoLabel.BackgroundTransparency = 1
+infoLabel.Text = "Кликните на игрока для телепортации (Y сохраняется)"
+infoLabel.TextColor3 = Color3.new(1, 1, 0)
+infoLabel.TextSize = 12
+infoLabel.Font = Enum.Font.GothamBold
+infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.TextWrapped = true
+
+-- Заголовок списка игроков
+playerListFrame.Parent = mainFrame
+playerListFrame.Size = UDim2.new(0.9, 0, 0, 250)
+playerListFrame.Position = UDim2.new(0.05, 0, 0, 210)
+playerListFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+playerListFrame.BorderSizePixel = 0
+
+local listCorner = Instance.new("UICorner")
+listCorner.CornerRadius = UDim.new(0, 8)
+listCorner.Parent = playerListFrame
+
+playerListLabel.Parent = playerListFrame
+playerListLabel.Size = UDim2.new(1, 0, 0, 25)
+playerListLabel.Position = UDim2.new(0, 0, 0, 0)
+playerListLabel.BackgroundColor3 = Color3.new(0.25, 0.25, 0.25)
+playerListLabel.Text = "  Игроки онлайн (клик = телепорт с сохранением Y)"
+playerListLabel.TextColor3 = Color3.new(1, 1, 1)
+playerListLabel.TextSize = 12
+playerListLabel.Font = Enum.Font.GothamBold
+playerListLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local listTitleCorner = Instance.new("UICorner")
+listTitleCorner.CornerRadius = UDim.new(0, 8)
+listTitleCorner.Parent = playerListLabel
+
+scrollFrame.Parent = playerListFrame
+scrollFrame.Size = UDim2.new(1, 0, 1, -30)
+scrollFrame.Position = UDim2.new(0, 0, 0, 30)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 8
+scrollFrame.ScrollBarImageColor3 = Color3.new(0.5, 0.5, 0.5)
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+playerListLayout.Parent = scrollFrame
+playerListLayout.Padding = UDim.new(0, 4)
+playerListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Функция телепортации
+local function teleportTo(position, lookUp)
+    local character = LocalPlayer.Character
+    if not character then
+        infoLabel.Text = "Ошибка: Персонаж не найден!"
+        infoLabel.TextColor3 = Color3.new(1, 0, 0)
+        return
+    end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    
+    if not humanoidRootPart or not humanoid then
+        infoLabel.Text = "Ошибка: HumanoidRootPart не найден!"
+        infoLabel.TextColor3 = Color3.new(1, 0, 0)
+        return
+    end
+    
+    if lookUp then
+        -- Телепорт с направлением вверх (для кнопки B)
+        local lookPoint = position + settings.lookDirection * 100
+        humanoidRootPart.CFrame = CFrame.lookAt(position, lookPoint)
+        
+        -- Дополнительная фиксация торса
+        local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+        if torso then
+            torso.CFrame = CFrame.lookAt(torso.Position, lookPoint)
+        end
+        
+        -- Коррекция направления
+        humanoid.AutoRotate = false
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if humanoidRootPart and humanoidRootPart.Parent then
+                local currentLook = humanoidRootPart.CFrame.LookVector
+                if (currentLook - settings.lookDirection).Magnitude > 0.1 then
+                    humanoidRootPart.CFrame = CFrame.lookAt(humanoidRootPart.Position, lookPoint)
+                end
+            else
+                connection:Disconnect()
+            end
+        end)
+        
+        task.delay(2, function()
+            if connection then
+                connection:Disconnect()
+                humanoid.AutoRotate = true
+            end
+        end)
+        
+        infoLabel.Text = string.format("Телепорт на B: (%.0f, %.0f, %.0f) [ВВЕРХ]", 
+            position.X, position.Y, position.Z)
+    else
+        -- Обычный телепорт без изменения направления
+        humanoidRootPart.CFrame = CFrame.new(position)
+        infoLabel.Text = string.format("Телепорт на: (%.0f, %.0f, %.0f)", 
+            position.X, position.Y, position.Z)
+    end
+    
+    infoLabel.TextColor3 = Color3.new(0, 1, 0)
+    
+    -- Звук
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxasset://sounds/action_footsteps_plastic.mp3"
+    sound.Parent = character
+    sound:Play()
+    game:GetService("Debris"):AddItem(sound, 2)
+    
+    task.delay(2, function()
+        infoLabel.Text = "Кликните на игрока для телепортации (Y сохраняется)"
+        infoLabel.TextColor3 = Color3.new(1, 1, 0)
+    end)
+end
+
+-- Функция обновления списка игроков
+local function updatePlayerList()
+    -- Очищаем старые кнопки
+    for _, button in pairs(playerButtons) do
+        button:Destroy()
+    end
+    playerButtons = {}
+    
+    -- Получаем всех игроков кроме себя
+    local otherPlayers = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(otherPlayers, player)
+        end
+    end
+    
+    -- Сортируем по имени
+    table.sort(otherPlayers, function(a, b)
+        return a.Name < b.Name
+    end)
+    
+    -- Создаем кнопки для каждого игрока
+    for _, player in ipairs(otherPlayers) do
+        local playerButton = Instance.new("TextButton")
+        playerButton.Name = "PlayerButton_" .. player.Name
+        playerButton.Parent = scrollFrame
+        playerButton.Size = UDim2.new(0.95, 0, 0, 45)
+        playerButton.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+        playerButton.AutoButtonColor = true
+        playerButton.Text = ""
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 6)
+        btnCorner.Parent = playerButton
+        
+        -- Индикатор онлайн
+        local statusDot = Instance.new("Frame")
+        statusDot.Parent = playerButton
+        statusDot.Size = UDim2.new(0, 8, 0, 8)
+        statusDot.Position = UDim2.new(0, 8, 0.5, -4)
+        statusDot.BackgroundColor3 = Color3.new(0, 1, 0)
+        statusDot.BorderSizePixel = 0
+        
+        local dotCorner = Instance.new("UICorner")
+        dotCorner.CornerRadius = UDim.new(1, 0)
+        dotCorner.Parent = statusDot
+        
+        -- Имя игрока
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Parent = playerButton
+        nameLabel.Size = UDim2.new(0.45, 0, 0.5, 0)
+        nameLabel.Position = UDim2.new(0, 20, 0, 2)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Color3.new(1, 1, 1)
+        nameLabel.TextSize = 14
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        
+        -- Координаты игрока
+        local coordsLabel = Instance.new("TextLabel")
+        coordsLabel.Parent = playerButton
+        coordsLabel.Size = UDim2.new(0.45, 0, 0.5, 0)
+        coordsLabel.Position = UDim2.new(0, 20, 0, 22)
+        coordsLabel.BackgroundTransparency = 1
+        coordsLabel.TextColor3 = Color3.new(0.6, 0.6, 1)
+        coordsLabel.TextSize = 11
+        coordsLabel.Font = Enum.Font.Gotham
+        coordsLabel.TextXAlignment = Enum.TextXAlignment.Left
+        
+        -- Расстояние до игрока
+        local distanceLabel = Instance.new("TextLabel")
+        distanceLabel.Parent = playerButton
+        distanceLabel.Size = UDim2.new(0.25, 0, 1, 0)
+        distanceLabel.Position = UDim2.new(0.45, 0, 0, 0)
+        distanceLabel.BackgroundTransparency = 1
+        distanceLabel.TextColor3 = Color3.new(0.5, 0.5, 1)
+        distanceLabel.TextSize = 12
+        distanceLabel.Font = Enum.Font.Gotham
+        
+        -- Кнопка телепорта
+        local tpIcon = Instance.new("TextLabel")
+        tpIcon.Parent = playerButton
+        tpIcon.Size = UDim2.new(0.2, 0, 1, 0)
+        tpIcon.Position = UDim2.new(0.7, 0, 0, 0)
+        tpIcon.BackgroundTransparency = 1
+        tpIcon.Text = "↗"
+        tpIcon.TextColor3 = Color3.new(0, 1, 0)
+        tpIcon.TextSize = 24
+        tpIcon.Font = Enum.Font.GothamBold
+        
+        -- Функция обновления информации об игроке
+        local function updatePlayerInfo()
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local playerPos = player.Character.HumanoidRootPart.Position
+                coordsLabel.Text = string.format("X:%.0f Z:%.0f", playerPos.X, playerPos.Z)
+                
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local myPos = LocalPlayer.Character.HumanoidRootPart.Position
+                    local dist = (myPos - playerPos).Magnitude
+                    distanceLabel.Text = string.format("%.0f st", dist)
+                end
+            else
+                coordsLabel.Text = "?"
+                distanceLabel.Text = "?"
+            end
+        end
+        
+        -- Обновляем информацию каждую секунду
+        local heartbeatConn
+        heartbeatConn = RunService.Heartbeat:Connect(function()
+            if playerButton and playerButton.Parent then
+                updatePlayerInfo()
+            else
+                heartbeatConn:Disconnect()
+            end
+        end)
+        
+        -- Обработчик клика - ТЕЛЕПОРТАЦИЯ К ИГРОКУ С СОХРАНЕНИЕМ Y
+        playerButton.MouseButton1Click:Connect(function()
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    -- Берем X и Z игрока, но сохраняем свою Y
+                    local myPos = LocalPlayer.Character.HumanoidRootPart.Position
+                    local targetPos = player.Character.HumanoidRootPart.Position
+                    
+                    -- Создаем новую позицию с X и Z игрока, но с моей Y
+                    local teleportPos = Vector3.new(targetPos.X, myPos.Y, targetPos.Z)
+                    
+                    teleportTo(teleportPos, false)  -- false = обычный телепорт без поворота
+                    
+                    -- Визуальный эффект нажатия
+                    playerButton.BackgroundColor3 = Color3.new(0, 0.5, 0)
+                    task.delay(0.2, function()
+                        if playerButton and playerButton.Parent then
+                            playerButton.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+                        end
+                    end)
+                    
+                    -- Показываем что сохранили Y
+                    infoLabel.Text = string.format("Телепорт к %s: Y=%.0f сохранена", player.Name, myPos.Y)
+                    infoLabel.TextColor3 = Color3.new(0, 1, 0)
+                else
+                    infoLabel.Text = "Игрок " .. player.Name .. " не имеет персонажа!"
+                    infoLabel.TextColor3 = Color3.new(1, 0, 0)
+                end
+            else
+                infoLabel.Text = "У вас нет персонажа!"
+                infoLabel.TextColor3 = Color3.new(1, 0, 0)
+            end
+            
+            task.delay(2, function()
+                infoLabel.Text = "Кликните на игрока для телепортации (Y сохраняется)"
+                infoLabel.TextColor3 = Color3.new(1, 1, 0)
+            end)
+        end)
+        
+        table.insert(playerButtons, playerButton)
+    end
+end
+
+-- Обработчики кнопок
+buttonA.MouseButton1Click:Connect(function()
+    teleportTo(settings.buttonACoords, false)  -- false = без направления
+end)
+
+buttonB.MouseButton1Click:Connect(function()
+    teleportTo(settings.buttonBCoords, true)  -- true = с направлением вверх
+end)
+
+-- Закрытие GUI
+closeButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
+
+-- Перетаскивание окна
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+dragFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+dragFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+-- Обновление списка игроков при изменении
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(updatePlayerList)
+updatePlayerList()
+
+-- Горячие клавиши
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.F1 then
+        mainFrame.Visible = not mainFrame.Visible
+    elseif input.KeyCode == Enum.KeyCode.F2 then
+        buttonA.MouseButton1Click:Fire()
+    elseif input.KeyCode == Enum.KeyCode.F3 then
+        buttonB.MouseButton1Click:Fire()
+    end
+end)
+
+print("=== Teleport GUI с сохранением Y ===")
+print("▶ Клик на игрока - телепорт к нему с сохранением вашей Y")
+print(string.format("Кнопка A - телепорт на (%.0f, %.0f, %.0f)", 
+    settings.buttonACoords.X, settings.buttonACoords.Y, settings.buttonACoords.Z))
+print(string.format("Кнопка B - телепорт на (%.0f, %.0f, %.0f) с направлением ВВЕРХ", 
+    settings.buttonBCoords.X, settings.buttonBCoords.Y, settings.buttonBCoords.Z))
+print("F1 - показать/скрыть GUI")
+print("F2 - телепорт на кнопку A")
+print("F3 - телепорт на кнопку B")
