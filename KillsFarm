@@ -1,0 +1,330 @@
+local plr = game:GetService("Players").LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+-- ==================== НАСТРОЙКИ ====================
+local settings = {
+    running = true,
+    showMessages = true,
+    delays = {
+        afterSpawn = 0.5,
+        afterDeath = 7.3,
+        maxWaitForCharacter = 5
+    },
+    positions = {
+        farm = Vector3.new(-597, 952, 1335)
+    },
+    keys = {
+        toggle = Enum.KeyCode.F4,
+        showMenu = Enum.KeyCode.F3
+    },
+    targetPlayer = "xXSweetDr3amXx"  -- СЮДА ВПИШИ НИК ИГРОКА
+}
+
+-- ==================== ФУНКЦИИ ====================
+
+local function log(msg, type)
+    if settings.showMessages then
+        if type == "error" then
+            warn("❌ " .. msg)
+        elseif type == "success" then
+            print("✅ " .. msg)
+        elseif type == "info" then
+            print("ℹ️ " .. msg)
+        elseif type == "warning" then
+            print("⚠️ " .. msg)
+        else
+            print("📌 " .. msg)
+        end
+    end
+end
+
+local function teleportTo(position)
+    local character = plr.Character
+    if character then
+        local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+        if rootPart then
+            rootPart.CFrame = CFrame.new(position)
+            log("Телепортировались на " .. tostring(position), "success")
+            return true
+        end
+    end
+    return false
+end
+
+local function notify(message, color)
+    local screenGui = Instance.new("ScreenGui")
+    local frame = Instance.new("Frame")
+    local textLabel = Instance.new("TextLabel")
+    
+    screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.IgnoreGuiInset = true
+    
+    frame.Parent = screenGui
+    frame.BackgroundColor3 = color or Color3.new(0.2, 0.2, 0.2)
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    frame.Position = UDim2.new(0.5, -150, 0.1, 0)
+    frame.Size = UDim2.new(0, 300, 0, 40)
+    
+    textLabel.Parent = frame
+    textLabel.BackgroundTransparency = 1
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.Text = message
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.TextSize = 20
+    
+    frame.BackgroundTransparency = 1
+    textLabel.TextTransparency = 1
+    
+    TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 0.3}):Play()
+    TweenService:Create(textLabel, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    
+    task.wait(2)
+    TweenService:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(textLabel, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+    task.wait(0.3)
+    screenGui:Destroy()
+end
+
+-- Найдем события
+local charEvent = ReplicatedStorage:FindFirstChild("Char")
+if not charEvent then
+    for i, v in pairs(ReplicatedStorage:GetChildren()) do
+        if v.ClassName == "RemoteEvent" and v.Name == "Char" then
+            charEvent = v
+            break
+        end
+    end
+end
+
+if not charEvent then
+    log("НЕ НАЙДЕНО СОБЫТИЕ Char! Скрипт не будет работать.", "error")
+    return
+else
+    log("Найдено событие Char: " .. charEvent:GetFullName(), "success")
+end
+
+local resetEvent = ReplicatedStorage:FindFirstChild("ResetDeath")
+if not resetEvent then
+    log("ResetDeath не найден, но это не критично", "warning")
+end
+
+-- ==================== УПРАВЛЕНИЕ ====================
+
+local function showMenu()
+    print("\n" .. string.rep("=", 50))
+    print("МЕНЮ УПРАВЛЕНИЯ ФАРМОМ")
+    print(string.rep("=", 50))
+    print("F4 - Запуск/Остановка цикла (Текущий статус: " .. (settings.running and "РАБОТАЕТ" or "ОСТАНОВЛЕН") .. ")")
+    print("F3 - Показать это меню")
+    print(string.rep("-", 50))
+    print("Текущие настройки:")
+    print("  • После спавна: " .. settings.delays.afterSpawn .. "с")
+    print("  • После смерти: " .. settings.delays.afterDeath .. "с")
+    print("  • Целевой игрок: " .. (settings.targetPlayer or "не задан"))
+    print("  • Порог ресета: ≥ 5")
+    print(string.rep("=", 50) .. "\n")
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == settings.keys.toggle then
+        settings.running = not settings.running
+        local status = settings.running and "ЗАПУЩЕН" or "ОСТАНОВЛЕН"
+        log("Цикл " .. status, settings.running and "success" or "warning")
+        notify("Цикл " .. status, settings.running and Color3.new(0, 1, 0) or Color3.new(1, 0, 0))
+    
+    elseif input.KeyCode == settings.keys.showMenu then
+        showMenu()
+    end
+end)
+
+showMenu()
+
+-- ==================== ФУНКЦИЯ ОЖИДАНИЯ ТЭГА (ПРОСТАЯ ВЕРСИЯ) ====================
+local function waitForTag()
+    local targetPlayer = settings.targetPlayer
+    
+    if not targetPlayer then
+        log("⚠️ Целевой игрок не задан! Укажи ник в настройках settings.targetPlayer", "warning")
+        return false
+    end
+    
+    log("Ожидание тега от игрока: " .. targetPlayer .. " (нужно ≥ 5)", "info")
+    
+    -- Ждём появления персонажа
+    local character = plr.Character
+    while settings.running and not character do
+        task.wait(0.1)
+        character = plr.Character
+    end
+    
+    if not settings.running then
+        return false
+    end
+    
+    -- Ждём появления папки Data
+    local data = character:FindFirstChild("Data")
+    while settings.running and not data do
+        task.wait(0.1)
+        data = character:FindFirstChild("Data")
+    end
+    
+    if not settings.running then
+        return false
+    end
+    
+    -- Ждём появления папки Tags
+    local tags = data:FindFirstChild("Tags")
+    while settings.running and not tags do
+        task.wait(0.1)
+        tags = data:FindFirstChild("Tags")
+    end
+    
+    if not settings.running then
+        return false
+    end
+    
+    log("Папка Tags найдена, начинаем мониторинг...", "success")
+    
+    local reached = false
+    
+    -- Бесконечный цикл проверки
+    while settings.running and not reached and plr.Character == character do
+        -- Ищем тег нужного игрока
+        local tag = tags:FindFirstChild(targetPlayer)
+        
+        if tag and tag:IsA("IntValue") then
+            local value = tag.Value
+            log("Тег " .. targetPlayer .. " = " .. value, "info")
+            
+            if value >= 5 then
+                log("⚠️ Достигнут порог! " .. targetPlayer .. " нанес " .. value .. " ударов", "warning")
+                reached = true
+                break
+            end
+        else
+            log("Тег игрока " .. targetPlayer .. " пока не появился", "info")
+        end
+        
+        task.wait(0.5) -- Проверяем каждые 0.5 секунды
+    end
+    
+    return reached
+end
+
+-- ==================== ОСНОВНОЙ ЦИКЛ ====================
+
+local cycleCount = 0
+
+repeat
+    if not settings.running then
+        task.wait(0.5)
+        continue
+    end
+    
+    cycleCount = cycleCount + 1
+    log("══════════════════════════════════════════")
+    log("ЦИКЛ #" .. cycleCount, "info")
+    log("══════════════════════════════════════════")
+    
+    ------------------------------------------------------------
+    -- ШАГ 1: УБИВАЕМ ТЕКУЩЕГО ПЕРСОНАЖА
+    ------------------------------------------------------------
+    if plr.Character then
+        log("Убиваем текущего персонажа перед спавном...", "info")
+        if resetEvent then
+            pcall(function()
+                resetEvent:FireServer()
+                log("→ ResetDeath:FireServer() вызван", "success")
+            end)
+        else
+            if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+                plr.Character.Humanoid.Health = 0
+                log("→ Установили Health = 0", "success")
+            end
+        end
+        wait(1)
+    end
+    
+    ------------------------------------------------------------
+    -- ШАГ 2: СПАВН ПЕРСОНАЖА
+    ------------------------------------------------------------
+    log("Пытаемся заспавнить персонажа через Char...", "info")
+    
+    local spawnSuccess = pcall(function()
+        charEvent:FireServer("GTGaster", "")
+        log("→ Char:FireServer('GTGaster', '') вызван", "success")
+    end)
+    
+    if not spawnSuccess then
+        log("! Ошибка при вызове Char", "error")
+    end
+    
+    wait(settings.delays.afterSpawn)
+    
+    ------------------------------------------------------------
+    -- ШАГ 3: ПРОВЕРКА ПОЯВЛЕНИЯ ПЕРСОНАЖА
+    ------------------------------------------------------------
+    local waitStart = tick()
+    while not plr.Character and (tick() - waitStart) < settings.delays.maxWaitForCharacter do
+        wait(0.5)
+    end
+    
+    ------------------------------------------------------------
+    -- ШАГ 4: ТЕЛЕПОРТАЦИЯ
+    ------------------------------------------------------------
+    if plr.Character then
+        log("Персонаж появился, телепортируем...", "success")
+        teleportTo(settings.positions.farm)
+    else
+        log("Персонаж так и не появился после спавна!", "error")
+        wait(settings.delays.afterDeath)
+        continue
+    end
+    
+    wait(0.5)
+    
+    ------------------------------------------------------------
+    -- ШАГ 5: ОЖИДАНИЕ ТЭГА
+    ------------------------------------------------------------
+    local tagReached = waitForTag()
+    
+    if not settings.running then
+        continue
+    end
+    
+    if not tagReached then
+        log("Ожидание тега не завершилось достижением порога", "warning")
+        wait(settings.delays.afterDeath)
+        continue
+    end
+    
+    ------------------------------------------------------------
+    -- ШАГ 6: СМЕРТЬ/РЕСПАВН
+    ------------------------------------------------------------
+    log("Порог тега достигнут! Вызываем ресет...", "info")
+    
+    if resetEvent then
+        pcall(function()
+            resetEvent:FireServer()
+            log("→ ResetDeath:FireServer() вызван", "success")
+        end)
+    else
+        if plr.Character and plr.Character:FindFirstChild("Humanoid") then
+            plr.Character.Humanoid.Health = 0
+            log("→ Установили Health = 0", "success")
+        end
+    end
+    
+    ------------------------------------------------------------
+    -- ШАГ 7: ОЖИДАНИЕ ПЕРЕД СЛЕДУЮЩИМ ЦИКЛОМ
+    ------------------------------------------------------------
+    log("Ждем " .. settings.delays.afterDeath .. " секунд до следующего цикла", "info")
+    wait(settings.delays.afterDeath)
+    
+until false
