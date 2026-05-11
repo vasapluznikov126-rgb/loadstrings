@@ -311,3 +311,8 @@ repeat
     wait(settings.delays.afterDeath)
     
 until false
+
+while wait() do
+local menuSelection = game.Players.LocalPlayer.PlayerGui:WaitForChild("SelectionMenu")
+menuSelection:Destroy()
+end
