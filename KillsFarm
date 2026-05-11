@@ -6,11 +6,11 @@ local TweenService = game:GetService("TweenService")
 -- ==================== НАСТРОЙКИ ====================
 local settings = {
     running = true,
-    showMessages = true,
     delays = {
         afterSpawn = 0.5,
         afterDeath = 7.3,
-        maxWaitForCharacter = 5
+        maxWaitForCharacter = 5,
+        teleportInterval = 0.1  -- Интервал телепортации (каждые 0.1 секунды)
     },
     positions = {
         farm = Vector3.new(-597, 952, 1335)
@@ -25,32 +25,48 @@ local settings = {
 -- ==================== ФУНКЦИИ ====================
 
 local function log(msg, type)
-    if settings.showMessages then
-        if type == "error" then
-            warn("❌ " .. msg)
-        elseif type == "success" then
-            print("✅ " .. msg)
-        elseif type == "info" then
-            print("ℹ️ " .. msg)
-        elseif type == "warning" then
-            print("⚠️ " .. msg)
-        else
-            print("📌 " .. msg)
-        end
+    if type == "error" then
+        warn("❌ " .. msg)
+    elseif type == "success" then
+        print("✅ " .. msg)
+    elseif type == "info" then
+        print("ℹ️ " .. msg)
+    elseif type == "warning" then
+        print("⚠️ " .. msg)
     end
 end
 
+-- Функция телепортации
 local function teleportTo(position)
     local character = plr.Character
     if character then
         local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
         if rootPart then
             rootPart.CFrame = CFrame.new(position)
-            log("Телепортировались на " .. tostring(position), "success")
             return true
         end
     end
     return false
+end
+
+-- Функция для постоянной телепортации (запускается в отдельном потоке)
+local teleportRunning = false
+local function startConstantTeleport()
+    if teleportRunning then return end
+    teleportRunning = true
+    
+    task.spawn(function()
+        while settings.running and teleportRunning do
+            if plr.Character then
+                teleportTo(settings.positions.farm)
+            end
+            task.wait(settings.delays.teleportInterval)
+        end
+    end)
+end
+
+local function stopConstantTeleport()
+    teleportRunning = false
 end
 
 local function notify(message, color)
@@ -103,8 +119,6 @@ end
 if not charEvent then
     log("НЕ НАЙДЕНО СОБЫТИЕ Char! Скрипт не будет работать.", "error")
     return
-else
-    log("Найдено событие Char: " .. charEvent:GetFullName(), "success")
 end
 
 local resetEvent = ReplicatedStorage:FindFirstChild("ResetDeath")
@@ -118,14 +132,11 @@ local function showMenu()
     print("\n" .. string.rep("=", 50))
     print("МЕНЮ УПРАВЛЕНИЯ ФАРМОМ")
     print(string.rep("=", 50))
-    print("F4 - Запуск/Остановка цикла (Текущий статус: " .. (settings.running and "РАБОТАЕТ" or "ОСТАНОВЛЕН") .. ")")
+    print("F4 - Запуск/Остановка цикла")
     print("F3 - Показать это меню")
     print(string.rep("-", 50))
-    print("Текущие настройки:")
-    print("  • После спавна: " .. settings.delays.afterSpawn .. "с")
-    print("  • После смерти: " .. settings.delays.afterDeath .. "с")
-    print("  • Целевой игрок: " .. (settings.targetPlayer or "не задан"))
-    print("  • Порог ресета: ≥ 5")
+    print("Целевой игрок: " .. (settings.targetPlayer or "не задан"))
+    print("Порог ресета: ≥ 5")
     print(string.rep("=", 50) .. "\n")
 end
 
@@ -135,7 +146,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == settings.keys.toggle then
         settings.running = not settings.running
         local status = settings.running and "ЗАПУЩЕН" or "ОСТАНОВЛЕН"
-        log("Цикл " .. status, settings.running and "success" or "warning")
+        
+        if settings.running then
+            startConstantTeleport()
+            log("Цикл " .. status, "success")
+        else
+            stopConstantTeleport()
+            log("Цикл " .. status, "warning")
+        end
         notify("Цикл " .. status, settings.running and Color3.new(0, 1, 0) or Color3.new(1, 0, 0))
     
     elseif input.KeyCode == settings.keys.showMenu then
@@ -145,16 +163,13 @@ end)
 
 showMenu()
 
--- ==================== ФУНКЦИЯ ОЖИДАНИЯ ТЭГА (ПРОСТАЯ ВЕРСИЯ) ====================
+-- ==================== ФУНКЦИЯ ОЖИДАНИЯ ТЭГА ====================
 local function waitForTag()
     local targetPlayer = settings.targetPlayer
     
     if not targetPlayer then
-        log("⚠️ Целевой игрок не задан! Укажи ник в настройках settings.targetPlayer", "warning")
         return false
     end
-    
-    log("Ожидание тега от игрока: " .. targetPlayer .. " (нужно ≥ 5)", "info")
     
     -- Ждём появления персонажа
     local character = plr.Character
@@ -189,29 +204,18 @@ local function waitForTag()
         return false
     end
     
-    log("Папка Tags найдена, начинаем мониторинг...", "success")
-    
     local reached = false
     
-    -- Бесконечный цикл проверки
+    -- Проверяем каждые 0.5 секунды
     while settings.running and not reached and plr.Character == character do
-        -- Ищем тег нужного игрока
         local tag = tags:FindFirstChild(targetPlayer)
         
-        if tag and tag:IsA("IntValue") then
-            local value = tag.Value
-            log("Тег " .. targetPlayer .. " = " .. value, "info")
-            
-            if value >= 5 then
-                log("⚠️ Достигнут порог! " .. targetPlayer .. " нанес " .. value .. " ударов", "warning")
-                reached = true
-                break
-            end
-        else
-            log("Тег игрока " .. targetPlayer .. " пока не появился", "info")
+        if tag and tag:IsA("IntValue") and tag.Value >= 5 then
+            reached = true
+            break
         end
         
-        task.wait(0.5) -- Проверяем каждые 0.5 секунды
+        task.wait(0.5)
     end
     
     return reached
@@ -221,6 +225,9 @@ end
 
 local cycleCount = 0
 
+-- Запускаем постоянную телепортацию
+startConstantTeleport()
+
 repeat
     if not settings.running then
         task.wait(0.5)
@@ -228,24 +235,17 @@ repeat
     end
     
     cycleCount = cycleCount + 1
-    log("══════════════════════════════════════════")
     log("ЦИКЛ #" .. cycleCount, "info")
-    log("══════════════════════════════════════════")
     
     ------------------------------------------------------------
     -- ШАГ 1: УБИВАЕМ ТЕКУЩЕГО ПЕРСОНАЖА
     ------------------------------------------------------------
     if plr.Character then
-        log("Убиваем текущего персонажа перед спавном...", "info")
         if resetEvent then
-            pcall(function()
-                resetEvent:FireServer()
-                log("→ ResetDeath:FireServer() вызван", "success")
-            end)
+            pcall(function() resetEvent:FireServer() end)
         else
             if plr.Character and plr.Character:FindFirstChild("Humanoid") then
                 plr.Character.Humanoid.Health = 0
-                log("→ Установили Health = 0", "success")
             end
         end
         wait(1)
@@ -254,16 +254,9 @@ repeat
     ------------------------------------------------------------
     -- ШАГ 2: СПАВН ПЕРСОНАЖА
     ------------------------------------------------------------
-    log("Пытаемся заспавнить персонажа через Char...", "info")
-    
-    local spawnSuccess = pcall(function()
+    pcall(function()
         charEvent:FireServer("GTGaster", "")
-        log("→ Char:FireServer('GTGaster', '') вызван", "success")
     end)
-    
-    if not spawnSuccess then
-        log("! Ошибка при вызове Char", "error")
-    end
     
     wait(settings.delays.afterSpawn)
     
@@ -276,13 +269,9 @@ repeat
     end
     
     ------------------------------------------------------------
-    -- ШАГ 4: ТЕЛЕПОРТАЦИЯ
+    -- ШАГ 4: ПРОВЕРКА
     ------------------------------------------------------------
-    if plr.Character then
-        log("Персонаж появился, телепортируем...", "success")
-        teleportTo(settings.positions.farm)
-    else
-        log("Персонаж так и не появился после спавна!", "error")
+    if not plr.Character then
         wait(settings.delays.afterDeath)
         continue
     end
@@ -299,32 +288,26 @@ repeat
     end
     
     if not tagReached then
-        log("Ожидание тега не завершилось достижением порога", "warning")
         wait(settings.delays.afterDeath)
         continue
     end
     
     ------------------------------------------------------------
-    -- ШАГ 6: СМЕРТЬ/РЕСПАВН
+    -- ШАГ 6: РЕСЕТ
     ------------------------------------------------------------
-    log("Порог тега достигнут! Вызываем ресет...", "info")
+    log("Ресет! Достигнут порог урона от " .. settings.targetPlayer, "warning")
     
     if resetEvent then
-        pcall(function()
-            resetEvent:FireServer()
-            log("→ ResetDeath:FireServer() вызван", "success")
-        end)
+        pcall(function() resetEvent:FireServer() end)
     else
         if plr.Character and plr.Character:FindFirstChild("Humanoid") then
             plr.Character.Humanoid.Health = 0
-            log("→ Установили Health = 0", "success")
         end
     end
     
     ------------------------------------------------------------
-    -- ШАГ 7: ОЖИДАНИЕ ПЕРЕД СЛЕДУЮЩИМ ЦИКЛОМ
+    -- ШАГ 7: ОЖИДАНИЕ
     ------------------------------------------------------------
-    log("Ждем " .. settings.delays.afterDeath .. " секунд до следующего цикла", "info")
     wait(settings.delays.afterDeath)
     
 until false
