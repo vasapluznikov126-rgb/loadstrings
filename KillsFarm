@@ -19,7 +19,7 @@ local settings = {
         toggle = Enum.KeyCode.F4,
         showMenu = Enum.KeyCode.F3
     },
-    targetPlayer = "Viper_Galazy201059"  -- СЮДА ВПИШИ НИК ИГРОКА
+    targetPlayer = "Viper_Galaxy201059"  -- СЮДА ВПИШИ НИК ИГРОКА
 }
 
 -- ==================== ФУНКЦИИ ====================
