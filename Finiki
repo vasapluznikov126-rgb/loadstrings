@@ -1,7 +1,4 @@
 -- Поместить в CoreGui
-if game.Players.LocalPlayer.UserId ~= 3201358234 then
-game.Players.LocalPlayer:Kick("Mama tovya v skovorodke sdohla nahui")
-else
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local userInputService = game:GetService("UserInputService")
@@ -507,5 +504,4 @@ end)
 -- ========== ЗАПУСК ==========
 updateWhitelistGUI()
 updatePlayersGUI()
-end
 applyHitboxChanges()
