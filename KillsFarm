@@ -13,13 +13,13 @@ local settings = {
         teleportInterval = 0.1  -- Интервал телепортации (каждые 0.1 секунды)
     },
     positions = {
-        farm = Vector3.new(-597, 952, 1335)
+        farm = Vector3.new(-80, 1490, 856)
     },
     keys = {
         toggle = Enum.KeyCode.F4,
         showMenu = Enum.KeyCode.F3
     },
-    targetPlayer = "Viper_Galaxy201059"  -- СЮДА ВПИШИ НИК ИГРОКА
+    targetPlayer = "Butaneir0"  -- СЮДА ВПИШИ НИК ИГРОКА
 }
 
 -- ==================== ФУНКЦИИ ====================
