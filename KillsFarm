@@ -19,7 +19,7 @@ local settings = {
         toggle = Enum.KeyCode.F4,
         showMenu = Enum.KeyCode.F3
     },
-    targetPlayer = "Butaneir0"  -- СЮДА ВПИШИ НИК ИГРОКА
+    targetPlayer = "ButaneiR0"  -- СЮДА ВПИШИ НИК ИГРОКА
 }
 
 -- ==================== ФУНКЦИИ ====================
