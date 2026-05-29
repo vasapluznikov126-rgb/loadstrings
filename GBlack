@@ -1,0 +1,824 @@
+pcall(function()
+    game.Players.LocalPlayer.Skins.XTCross.GBlack.Value = true
+    game.Players.LocalPlayer.Skins.XTCross.Value = "GBlack"
+    game.ReplicatedStorage.Char:FireServer("XTCross", "")
+end)
+
+local function copyEffectsToCharacter(char)
+    if scriptLocked then return end
+    -- Загружаем дамми, если ещё не загружен
+    local GBlackDummy = workspace:FindFirstChild("dustdustNormal")
+    if not GBlackDummy then
+        -- Пытаемся загрузить
+        local success = pcall(function()
+            game:GetObjects("rbxassetid://125167191133110")[1].Parent = workspace
+        end)
+        if not success then return end
+        GBlackDummy = workspace:WaitForChild("dustdustNormal", 2)
+        if not GBlackDummy then return end
+    end
+
+    -- Копируем эффекты на персонажа
+    local parts = {"Torso", "Left Leg", "Left Arm", "Right Leg", "Right Arm", "Head"}
+    local function copyAllEffects(dummyPart, charPart)
+        if not dummyPart or not charPart then return end
+        for _, descendant in pairs(dummyPart:GetDescendants()) do
+            if descendant:IsA("ParticleEmitter") or
+               descendant:IsA("Beam") or
+               descendant:IsA("Trail") or
+               descendant:IsA("Fire") or
+               descendant:IsA("Smoke") or
+               descendant:IsA("Sparkles") or
+               descendant:IsA("PointLight") or
+               descendant:IsA("SurfaceLight") then
+                local clone = descendant:Clone()
+                clone.Parent = charPart
+                if clone:IsA("ParticleEmitter") then
+                    clone.LockedToPart = true
+                end
+            end
+        end
+    end
+
+    for _, partName in ipairs(parts) do
+        local dummyPart = GBlackDummy:FindFirstChild(partName)
+        local charPart = char:FindFirstChild(partName)
+        if dummyPart and charPart then
+            copyAllEffects(dummyPart, charPart)
+        end
+    end
+    -- Удаляем дамми после копирования
+    if GBlackDummy and GBlackDummy.Parent == workspace then
+        GBlackDummy:Destroy()
+    end
+end
+
+local function copyYouTubeLink(videoID)
+    local url = "https://www.youtube.com/watch?v=" .. videoID
+    
+    if setclipboard then
+        setclipboard(url)
+        
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "YouTube Link Copied!",
+            Text = "You can use in your browser for a cool music!",
+            Duration = 4
+        })
+    else
+        warn("Clipboard function not available in this executor")
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Error",
+            Text = "Could not copy link to clipboard",
+            Duration = 3
+        })
+    end
+end
+copyYouTubeLink("KN8E8LDCppY")
+
+local player = game.Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+local scriptRunning = true
+local scriptLocked = false          -- если true – скрипт полностью отключается
+local character, Humanoid, dataFolder
+
+-- ============ ОСНОВНЫЕ ПЕРЕМЕННЫЕ ============
+local scytheInstance = nil
+local scytheLoaded = false
+local scytheVisible = false
+local scytheSystemEnabled = true
+local modeSwitchCooldown = false
+local modeSwitchTimer = nil
+local currentScytheMode = "normal"   -- normal / knives
+
+-- ============ СИСТЕМА АНИМАЦИИ ============
+local actionAnimTrack = nil
+local actionAnimation = Instance.new("Animation")
+actionAnimation.AnimationId = "rbxassetid://14855730384"
+
+local animationLocked = false
+local stopAnimationSystem = false
+
+-- ID анимаций idle (обычные)
+local idleAnimNormal = "rbxassetid://14853271700"
+local idleAnimKnives = "rbxassetid://14853278406"
+local currentIdleTrack = nil
+
+-- ID анимации смерти и idle для фазы 2
+local deathAnimId = "rbxassetid://15024436889"
+local idlePhase2 = "rbxassetid://14938724311"
+
+-- Звуки
+local M1SoundId = "rbxassetid://14857449509"
+local LastM1SoundId = "rbxassetid://14857449864"
+local NormalSwingSounds = {
+    "rbxassetid://16937947901",
+    "rbxassetid://16937948292",
+    "rbxassetid://16937947563",
+    "rbxassetid://16937947261",
+    "rbxassetid://16937946709",
+    "rbxassetid://16937945951",
+    "rbxassetid://16937946344"
+}
+
+-- Система M1
+local canUseM1 = true
+local M1_COOLDOWN = 2.25
+local M1_PRESS_LIMIT = 5
+local M1_COOLDOWN_NEW = 0.33
+local TIMEOUT_DURATION = 1.5
+local m1PressCount = 0
+local lastM1PressTime = 0
+local swingCooldownTask = nil
+local cooldownTask = nil
+local timeoutTask = nil
+local pendingFinalSwing = false
+local pendingFinalTimer = nil
+local PENDING_TIMEOUT = 3
+
+-- ============ ФУНКЦИЯ ОТКЛЮЧЕНИЯ ANIMATE ============
+local function disableAnimate()
+    if not character then return end
+    local animate = character:FindFirstChild("Animate")
+    if animate then
+        animate.Disabled = true
+        animate.Changed:Connect(function(prop)
+            if prop == "Disabled" and animate.Disabled == false then
+                animate.Disabled = true
+            end
+        end)
+    end
+end
+
+-- ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
+local function updateNickname()
+    if not scriptRunning or not character or scriptLocked then return end
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+    local display = head:FindFirstChild("Display")
+    if not display then
+        task.wait(1)
+        display = head:FindFirstChild("Display")
+        if not display then return end
+    end
+    local frame = display:FindFirstChild("Frame")
+    if not frame then
+        task.wait(0.5)
+        frame = display:FindFirstChild("Frame")
+        if not frame then return end
+    end
+    local textLabel = frame:FindFirstChild("TextLabel")
+    if not textLabel then
+        task.wait(0.5)
+        textLabel = frame:FindFirstChild("TextLabel")
+        if not textLabel then return end
+    end
+    local nickname = textLabel:FindFirstChild("UIGradient")
+    if not nickname then
+        nickname = Instance.new("UIGradient")
+        nickname.Name = "UIGradient"
+        nickname.Parent = textLabel
+    end
+    nickname.Rotation = 90
+    nickname.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 195)),
+        ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 0, 195)),
+        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(255, 0, 83)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 83))
+    })
+end
+
+local function destroyScythe()
+    if scytheInstance then
+        scytheInstance:Destroy()
+        scytheInstance = nil
+    end
+    scytheLoaded = false
+    scytheVisible = false
+end
+
+local function disableScytheSystem()
+    scytheSystemEnabled = false
+    destroyScythe()
+    M1SoundId = nil
+    LastM1SoundId = nil
+
+    if pendingFinalTimer then
+        task.cancel(pendingFinalTimer)
+        pendingFinalTimer = nil
+    end
+    pendingFinalSwing = false
+
+    if swingCooldownTask then
+        task.cancel(swingCooldownTask)
+        swingCooldownTask = nil
+    end
+    if cooldownTask then
+        task.cancel(cooldownTask)
+        cooldownTask = nil
+    end
+    if timeoutTask then
+        task.cancel(timeoutTask)
+        timeoutTask = nil
+    end
+
+    if modeSwitchTimer then
+        task.cancel(modeSwitchTimer)
+        modeSwitchTimer = nil
+    end
+    modeSwitchCooldown = false
+
+    canUseM1 = true
+    m1PressCount = 0
+    animationLocked = false
+    stopAnimationSystem = true
+    disableAnimate()
+
+    -- После полного отключения блокируем скрипт навсегда
+    scriptLocked = true
+end
+
+local function canPlaySound()
+    if not scriptRunning or not character or not dataFolder or scriptLocked then return false end
+    if not scytheSystemEnabled or stopAnimationSystem then return false end
+    local frozen = dataFolder:FindFirstChild("Frozen")
+    local blocking = dataFolder:FindFirstChild("Blocking")
+    local stunned = dataFolder:FindFirstChild("Stunned")
+    if not frozen or not blocking or not stunned then return false end
+    return (frozen.Value == false and blocking.Value == false and stunned.Value == false)
+end
+
+local function isSecondPhaseActive()
+    if not scriptRunning or not character or not dataFolder or scriptLocked then return false end
+    local health = dataFolder:FindFirstChild("Health")
+    if health and health.Value <= 0.1 then
+        local secondPhase = dataFolder:FindFirstChild("SecondPhase")
+        if secondPhase then secondPhase.Value = true end
+        return true
+    end
+    local secondPhase = dataFolder:FindFirstChild("SecondPhase")
+    return (secondPhase and secondPhase.Value == true)
+end
+
+local function playSoundAtCharacter(soundId)
+    if not scriptRunning or not character or scriptLocked then return nil end
+    if not canPlaySound() or not soundId then return nil end
+    local soundParent = character:FindFirstChild("Head") or character:FindFirstChild("UpperTorso") or character:FindFirstChild("HumanoidRootPart") or character
+    if not soundParent then return nil end
+    for _, oldSound in ipairs(soundParent:GetChildren()) do
+        if oldSound:IsA("Sound") and (oldSound.Name == "M1SwingSound" or oldSound.Name == "M1KnivesSound") then
+            oldSound:Stop()
+            oldSound:Destroy()
+        end
+    end
+    local sound = Instance.new("Sound")
+    sound.Name = "M1SwingSound"
+    sound.SoundId = soundId
+    sound.Volume = 5
+    sound.Parent = soundParent
+    sound:Play()
+    sound.Ended:Connect(function() sound:Destroy() end)
+    game:GetService("Debris"):AddItem(sound, 5)
+    return sound
+end
+
+local function playRandomNormalSound()
+    if #NormalSwingSounds == 0 then return nil end
+    return NormalSwingSounds[math.random(1, #NormalSwingSounds)]
+end
+
+local function resetM1Counter()
+    m1PressCount = 0
+end
+
+local function startM1Cooldown()
+    if cooldownTask then task.cancel(cooldownTask) end
+    canUseM1 = false
+    cooldownTask = task.delay(M1_COOLDOWN, function()
+        if not scriptRunning or scriptLocked then return end
+        canUseM1 = true
+        m1PressCount = 0
+        cooldownTask = nil
+    end)
+end
+
+local function startTimeoutReset()
+    if timeoutTask then task.cancel(timeoutTask) end
+    timeoutTask = task.delay(TIMEOUT_DURATION, function()
+        if not scriptRunning or scriptLocked then return end
+        if m1PressCount > 0 and m1PressCount < M1_PRESS_LIMIT then
+            resetM1Counter()
+        end
+        timeoutTask = nil
+    end)
+end
+
+local function startSwingCooldown()
+    if swingCooldownTask then task.cancel(swingCooldownTask) end
+    canUseM1 = false
+    swingCooldownTask = task.delay(M1_COOLDOWN_NEW, function()
+        if not scriptRunning or scriptLocked then return end
+        canUseM1 = true
+        swingCooldownTask = nil
+    end)
+end
+
+local function executeFinalSwing()
+    if not scriptRunning or not scytheSystemEnabled or stopAnimationSystem or scriptLocked then return end
+
+    if currentScytheMode == "knives" then
+        playSoundAtCharacter(LastM1SoundId)
+    else
+        local randomSoundId = playRandomNormalSound()
+        if randomSoundId then playSoundAtCharacter(randomSoundId) end
+    end
+
+    startM1Cooldown()
+end
+
+local function tryExecutePendingFinal()
+    if not pendingFinalSwing then return false end
+    if not canPlaySound() then return false end
+
+    pendingFinalSwing = false
+    if pendingFinalTimer then
+        task.cancel(pendingFinalTimer)
+        pendingFinalTimer = nil
+    end
+    executeFinalSwing()
+    return true
+end
+
+local function handleM1Action()
+    if not scriptRunning or not canUseM1 or not scytheSystemEnabled or stopAnimationSystem or scriptLocked then return false end
+
+    local currentTime = tick()
+
+    if pendingFinalSwing then
+        return false
+    end
+
+    if m1PressCount > 0 and (currentTime - lastM1PressTime) > TIMEOUT_DURATION then
+        resetM1Counter()
+    end
+
+    lastM1PressTime = currentTime
+    m1PressCount = m1PressCount + 1
+
+    if m1PressCount >= M1_PRESS_LIMIT then
+        if canPlaySound() then
+            if currentScytheMode == "knives" then
+                playSoundAtCharacter(LastM1SoundId)
+            else
+                local randomSoundId = playRandomNormalSound()
+                if randomSoundId then playSoundAtCharacter(randomSoundId) end
+            end
+            startM1Cooldown()
+        else
+            pendingFinalSwing = true
+            canUseM1 = false
+            pendingFinalTimer = task.delay(PENDING_TIMEOUT, function()
+                if pendingFinalSwing then
+                    pendingFinalSwing = false
+                    pendingFinalTimer = nil
+                    m1PressCount = 0
+                    canUseM1 = true
+                end
+            end)
+            task.spawn(function()
+                while pendingFinalSwing and scriptRunning and not scriptLocked do
+                    task.wait(0.1)
+                    if tryExecutePendingFinal() then
+                        break
+                    end
+                end
+            end)
+        end
+    else
+        if canPlaySound() then
+            if currentScytheMode == "knives" then
+                playSoundAtCharacter(M1SoundId)
+            else
+                local randomSoundId = playRandomNormalSound()
+                if randomSoundId then playSoundAtCharacter(randomSoundId) end
+            end
+        end
+        startSwingCooldown()
+        startTimeoutReset()
+    end
+
+    return true
+end
+
+local function loadScythe()
+    if not scriptRunning or scytheLoaded or not character or not scytheSystemEnabled or stopAnimationSystem or scriptLocked then return end
+    if isSecondPhaseActive() then return end
+    local success = pcall(function() game:GetObjects("rbxassetid://81785185236811")[1].Parent = workspace end)
+    if not success then return end
+    local Scythe = workspace:FindFirstChild("scythe")
+    if not Scythe then
+        for _, obj in pairs(workspace:GetChildren()) do
+            if obj.Name:lower():find("scythe") or obj:IsA("Model") then
+                Scythe = obj
+                break
+            end
+        end
+    end
+    if Scythe then
+        for _, descendant in ipairs(Scythe:GetDescendants()) do
+            if descendant:IsA("MeshPart") then
+                descendant.CanCollide = false
+            elseif descendant:IsA("BasePart") then
+                descendant.Transparency = 0
+            end
+        end
+        Scythe.Parent = character
+        scytheInstance = Scythe
+        local rightArm = character:FindFirstChild("Right Arm") or character:FindFirstChild("RightUpperArm")
+        if scytheInstance and rightArm and scytheInstance:FindFirstChild("Handle") then
+            local Weld1 = Instance.new("Motor6D")
+            Weld1.Name = "HandConnect"
+            Weld1.Parent = rightArm
+            Weld1.Part0 = rightArm
+            Weld1.Part1 = scytheInstance.Handle
+            Weld1.C0 = CFrame.new(0, -1.6, -1) * CFrame.Angles(math.rad(-115), math.rad(-50), 0)
+            scytheLoaded = true
+            scytheVisible = true
+            local highlight = scytheInstance:FindFirstChild("Highlight")
+            if highlight then
+                highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+            end
+        end
+    end
+end
+
+local function startKnifeRemovalSystem()
+    while scriptRunning and not scriptLocked do
+        task.wait(0.1)
+        if not player.Character then break end
+        local currentChar = player.Character
+        if currentChar then
+            for _, objName in ipairs({"Knife", "KnifePurple", "Melee", "XHeart", "Overwrite"}) do
+                local obj = currentChar:FindFirstChild(objName)
+                if obj then obj:Destroy() end
+            end
+        end
+    end
+end
+
+local function playIdleForCurrentMode()
+    if not Humanoid or stopAnimationSystem or scriptLocked then return end
+
+    if currentIdleTrack then
+        currentIdleTrack:Stop()
+        currentIdleTrack:Destroy()
+        currentIdleTrack = nil
+    end
+
+    local idleAnimId = (currentScytheMode == "knives") and idleAnimKnives or idleAnimNormal
+    local idleAnim = Instance.new("Animation")
+    idleAnim.AnimationId = idleAnimId
+    local idleTrack = Humanoid:LoadAnimation(idleAnim)
+    idleTrack.Priority = Enum.AnimationPriority.Idle
+    idleTrack.Looped = true
+    idleTrack:Play()
+    currentIdleTrack = idleTrack
+end
+
+local function playPhase2Idle()
+    if not Humanoid or scriptLocked then return end
+    for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+        track:Stop(0)
+        track:Destroy()
+    end
+    local anim = Instance.new("Animation")
+    anim.AnimationId = idlePhase2
+    local track = Humanoid:LoadAnimation(anim)
+    track.Priority = Enum.AnimationPriority.Idle
+    track.Looped = true
+    track:Play()
+    currentIdleTrack = track
+end
+
+local function playLockedActionAnimation()
+    if not scriptRunning or stopAnimationSystem or scriptLocked then return end
+    if not Humanoid or not actionAnimTrack then return end
+    if dataFolder and dataFolder:FindFirstChild("Health") and dataFolder.Health.Value == 0 then
+        stopAnimationSystem = true
+        return
+    end
+
+    animationLocked = true
+
+    for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+        if track ~= actionAnimTrack then
+            track:Stop(0)
+        end
+    end
+
+    actionAnimTrack:Stop(0)
+    actionAnimTrack:Play(0.05, 1, 1.5)
+
+    if not actionAnimTrack:GetAttribute("LockHooked") then
+        actionAnimTrack:SetAttribute("LockHooked", true)
+
+        Humanoid.AnimationPlayed:Connect(function(track)
+            if animationLocked and track ~= actionAnimTrack then
+                track:Stop(0)
+            end
+        end)
+
+        actionAnimTrack.Stopped:Connect(function()
+            animationLocked = false
+            task.wait(0.1)
+            playIdleForCurrentMode()
+        end)
+    end
+end
+
+local function playDeathAnimation()
+    if not Humanoid or scriptLocked then return end
+
+    disableAnimate()
+
+    for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+        track:Stop(0)
+        track:Destroy()
+    end
+
+    local anim = Instance.new("Animation")
+    anim.AnimationId = deathAnimId
+    local track = Humanoid:LoadAnimation(anim)
+    track.Priority = Enum.AnimationPriority.Core
+    track:Play()
+    track:AdjustSpeed(0.8)
+
+    local conn
+    conn = Humanoid.AnimationPlayed:Connect(function(newTrack)
+        if newTrack ~= track then
+            newTrack:Stop(0)
+            newTrack:Destroy()
+        end
+    end)
+
+    local timeoutTask = task.delay(30, function()
+        if scytheSystemEnabled then
+            conn:Disconnect()
+            playPhase2Idle()
+            disableScytheSystem()
+        end
+    end)
+
+    track.Stopped:Connect(function()
+        conn:Disconnect()
+        if timeoutTask then task.cancel(timeoutTask) end
+        playPhase2Idle()
+        disableScytheSystem()
+    end)
+end
+
+local modeSwitchCooldown = false
+local modeSwitchTimer = nil
+
+local function switchScytheMode()
+    if not scriptRunning or not scytheSystemEnabled or stopAnimationSystem or scriptLocked then return end
+    if isSecondPhaseActive() then return end
+    if modeSwitchCooldown then return end
+
+    if pendingFinalTimer then
+        task.cancel(pendingFinalTimer)
+        pendingFinalTimer = nil
+    end
+    if pendingFinalSwing then
+        pendingFinalSwing = false
+        m1PressCount = 0
+        canUseM1 = true
+    end
+
+    local cooldownTime = 0
+    if not scytheInstance then
+        currentScytheMode = "knives"
+        loadScythe()
+        task.spawn(playLockedActionAnimation)
+        cooldownTime = 0.85  -- Normal -> Knives
+    else
+        if currentScytheMode == "knives" then
+            -- knives -> normal
+            currentScytheMode = "normal"
+            destroyScythe()
+            playIdleForCurrentMode()
+            cooldownTime = 0.85 -- Knives -> Normal
+        else
+            -- normal -> knives
+            currentScytheMode = "knives"
+            loadScythe()
+            task.spawn(playLockedActionAnimation)
+            cooldownTime = 0.85  -- Normal -> Knives
+        end
+    end
+
+    if cooldownTime > 0 then
+        modeSwitchCooldown = true
+        if modeSwitchTimer then task.cancel(modeSwitchTimer) end
+        modeSwitchTimer = task.delay(cooldownTime, function()
+            modeSwitchCooldown = false
+            modeSwitchTimer = nil
+        end)
+    end
+end
+
+local function startHealthMonitor()
+    while scriptRunning and not scriptLocked do
+        task.wait(0.1)
+        if stopAnimationSystem then break end
+        if not character or not dataFolder then break end
+        local health = dataFolder:FindFirstChild("Health")
+        if health then
+            if health.Value == 0 then
+                if not stopAnimationSystem then
+                    stopAnimationSystem = true
+                    destroyScythe()
+                    if currentIdleTrack then
+                        currentIdleTrack:Stop()
+                        currentIdleTrack:Destroy()
+                        currentIdleTrack = nil
+                    end
+                    if actionAnimTrack then
+                        actionAnimTrack:Stop()
+                    end
+                    if Humanoid then
+                        for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+                            track:Stop(0)
+                            track:Destroy()
+                        end
+                    end
+                    playDeathAnimation()
+                end
+                break
+            end
+        end
+        local secondPhase = dataFolder:FindFirstChild("SecondPhase")
+        if secondPhase and secondPhase.Value == true then
+            if not stopAnimationSystem then
+                stopAnimationSystem = true
+                destroyScythe()
+                if currentIdleTrack then
+                    currentIdleTrack:Stop()
+                    currentIdleTrack:Destroy()
+                    currentIdleTrack = nil
+                end
+                if actionAnimTrack then
+                    actionAnimTrack:Stop()
+                end
+                if Humanoid then
+                    for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+                        track:Stop(0)
+                        track:Destroy()
+                    end
+                end
+                playDeathAnimation()
+            end
+            break
+        end
+    end
+end
+
+
+-- ============ ИНИЦИАЛИЗАЦИЯ ПЕРСОНАЖА ============
+local function initializeCharacter(newChar)
+    if not scriptRunning or scriptLocked then return end
+
+    character = newChar
+    disableAnimate()
+
+    -- Копируем эффекты на нового персонажа
+    copyEffectsToCharacter(character)
+
+    local function waitForHumanoid(char, timeout)
+        local start = tick()
+        while tick() - start < timeout do
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then return hum end
+            task.wait(0.1)
+        end
+        return nil
+    end
+    Humanoid = waitForHumanoid(character, 1)  -- таймаут 1 секунда
+    if not Humanoid then
+        warn("Humanoid не найден за 1 секунду, скрипт блокируется.")
+        scriptLocked = true
+        return
+    end
+
+    dataFolder = character:WaitForChild("Data")
+
+    stopAnimationSystem = false
+    animationLocked = false
+
+    if modeSwitchTimer then
+        task.cancel(modeSwitchTimer)
+        modeSwitchTimer = nil
+    end
+    modeSwitchCooldown = false
+
+    pendingFinalSwing = false
+    if pendingFinalTimer then
+        task.cancel(pendingFinalTimer)
+        pendingFinalTimer = nil
+    end
+
+    actionAnimTrack = Humanoid:LoadAnimation(actionAnimation)
+    actionAnimTrack.Priority = Enum.AnimationPriority.Core
+    actionAnimTrack:SetAttribute("LockHooked", nil)
+
+    if currentIdleTrack then
+        currentIdleTrack:Stop()
+        currentIdleTrack:Destroy()
+        currentIdleTrack = nil
+    end
+
+    scytheSystemEnabled = true
+    currentScytheMode = "normal"
+    canUseM1 = true
+    m1PressCount = 0
+    lastM1PressTime = 0
+
+    if cooldownTask then task.cancel(cooldownTask) cooldownTask = nil end
+    if timeoutTask then task.cancel(timeoutTask) timeoutTask = nil end
+    if swingCooldownTask then task.cancel(swingCooldownTask) swingCooldownTask = nil end
+
+    destroyScythe()
+    task.spawn(startHealthMonitor)
+    updateNickname()
+end
+
+-- ============ INPUT ============
+local lastEPressTime = 0
+local E_COOLDOWN = 0.4
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not scriptRunning or gameProcessed or scriptLocked then return end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if not canUseM1 or not Humanoid or Humanoid.Health <= 0 then return end
+        if dataFolder then
+            local health = dataFolder:FindFirstChild("Health")
+            if health and health.Value <= 0 then return end
+        end
+        if scytheSystemEnabled then
+            handleM1Action()
+        end
+
+    elseif input.KeyCode == Enum.KeyCode.E then
+        local currentTime = tick()
+        if currentTime - lastEPressTime < E_COOLDOWN then return end
+        lastEPressTime = currentTime
+
+        if not scytheSystemEnabled or isSecondPhaseActive() then return end
+        switchScytheMode()
+    end
+end)
+
+-- ============ R KEY SOUND SCRIPT ============
+local rKeyCooldown = false
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.R and rKeyCooldown == false then
+        rKeyCooldown = true
+        
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://13050807768"
+        sound.Parent = character or player
+        sound:Play()
+        
+        sound.Ended:Connect(function()
+            sound:Destroy()
+        end)
+        
+        wait(2)
+        rKeyCooldown = false
+    end
+end)
+
+-- ============ СОБЫТИЯ ============
+player.CharacterAdded:Connect(function(newChar)
+    if scriptLocked then return end
+    initializeCharacter(newChar)
+end)
+
+player.CharacterRemoving:Connect(function()
+    destroyScythe()
+end)
+
+-- Первичная инициализация, если персонаж уже есть
+if player.Character then
+    initializeCharacter(player.Character)
+else
+    player.CharacterAdded:Wait()
+    initializeCharacter(player.Character)
+end
+
+startKnifeRemovalSystem(character)
+updateNickname()
