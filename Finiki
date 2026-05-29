@@ -15,40 +15,32 @@ _G.Enabled = true
 -- БЕЛЫЙ СПИСОК
 local whitelist = {}
 
--- ========== ПЕРЕМЕННЫЕ ДЛЯ ПОВОРОТА ТОРСА ==========
-local isKeyPressed = false
-local rotateTask = nil
-
--- ========== ФУНКЦИЯ ПОВОРОТА ТОРСА ==========
-local function rotateTorso()
-    if not _G.Enabled then return end
-    
+local function lookStraightDown()
     local character = player.Character
     if not character then return end
     
-    local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("HumanoidRootPart")
-    if not torso then return end
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return end
     
-    -- Поворачиваем торс на 90 градусов по Y
-    local targetCFrame = torso.CFrame * CFrame.Angles(0, math.rad(90), 0)
-    torso.CFrame = targetCFrame
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    -- Поворачиваем персонажа строго вниз
+    local currentPos = rootPart.Position
+    
+    -- Создаём CFrame, направленный вниз (положительное вращение по X)
+    local newCFrame = CFrame.new(currentPos) * CFrame.Angles(math.pi/2, 0, 0)
+    
+    rootPart.CFrame = newCFrame
 end
 
-local function startRotating()
-    if rotateTask then return end
-    rotateTask = runService.RenderStepped:Connect(function()
-        if isKeyPressed and _G.Enabled then
-            rotateTorso()
-        end
-    end)
-end
-
-local function stopRotating()
-    if rotateTask then
-        rotateTask:Disconnect()
-        rotateTask = nil
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.T then
+        lookStraightDown()
     end
-end
+end)
 
 -- ========== ФУНКЦИЯ ПРИМЕНЕНИЯ ИЗМЕНЕНИЙ ХИТБОКСОВ ==========
 local function applyHitboxChanges()
