@@ -37,7 +37,7 @@ end
 userInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    if input.KeyCode == Enum.KeyCode.T then
+    if input.KeyCode == Enum.KeyCode.Two then
         lookStraightDown()
     end
 end)
