@@ -1,0 +1,177 @@
+game.Players.LocalPlayer.Skins.Sans.NMSans.Value = true
+    game.Players.LocalPlayer.Skins.Sans.Value = "NMSans"
+    game.ReplicatedStorage.Char:FireServer("Sans", "")
+    wait(1)
+
+
+local attach = Instance.new("Attachment")
+attach.Parent = game.Players.LocalPlayer.Character.Head
+attach.Name = "Attach"
+
+
+local clonedAura = Instance.new("ParticleEmitter")
+clonedAura.Parent = game.Players.LocalPlayer.Character.Head.Attach
+clonedAura.Name = "Flame"
+clonedAura.Brightness = 10 -- Исправлено: число вместо строки
+clonedAura.LightEmission = 1
+clonedAura.Texture = "rbxassetid://12077615395"
+
+-- Исправлено: добавлены запятые между NumberSequenceKeypoint
+clonedAura.Size = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.885, 0.885),
+    NumberSequenceKeypoint.new(1, 0.984, 0.984)
+})
+
+-- Исправлено: добавлены запятые между NumberSequenceKeypoint
+clonedAura.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0, 0),
+    NumberSequenceKeypoint.new(1, 0, 0)
+})
+
+clonedAura.ZOffset = -0.5
+clonedAura.Acceleration = Vector3.new(0, 36, 0)
+clonedAura.Drag = 5
+clonedAura.VelocityInheritance = 0
+
+-- Исправлено: Lifetime должен быть NumberRange, а не Vector2
+clonedAura.Lifetime = NumberRange.new(0.3, 0.5)
+clonedAura.Rate = 40
+clonedAura.LockedToPart = true
+clonedAura.Rotation = NumberRange.new(-180, 180)
+
+-- Исправлено: Speed должен быть NumberRange, а не Vector2
+clonedAura.Speed = NumberRange.new(3.6, 3.6)
+
+clonedAura.SpreadAngle = Vector2.new(360, 360)
+clonedAura.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+clonedAura.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+
+clonedAura.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),          -- Красный
+    ColorSequenceKeypoint.new(0.2, Color3.fromHSV(0.1, 1, 1)),     -- Оранжевый
+    ColorSequenceKeypoint.new(0.4, Color3.fromHSV(0.15, 1, 1)),    -- Желтый
+    ColorSequenceKeypoint.new(0.6, Color3.fromHSV(0.3, 1, 1)),     -- Зеленый
+    ColorSequenceKeypoint.new(0.8, Color3.fromHSV(0.7, 1, 1)),     -- Синий
+    ColorSequenceKeypoint.new(1, Color3.fromHSV(0.8, 1, 1))        -- Фиолетовый
+})
+
+local clonedAura1 = Instance.new("ParticleEmitter")
+clonedAura1.Parent = game.Players.LocalPlayer.Character.Head.Attach
+clonedAura1.Name = "Flame2"
+clonedAura1.Brightness = 10 -- Исправлено: число вместо строки
+clonedAura1.LightEmission = 1
+clonedAura1.Texture = "rbxassetid://15484052560"
+
+-- Исправлено: добавлены запятые между NumberSequenceKeypoint
+clonedAura1.Size = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.885, 0.885),
+    NumberSequenceKeypoint.new(1, 0.984, 0.984)
+})
+
+-- Исправлено: добавлены запятые между NumberSequenceKeypoint
+clonedAura1.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0, 0),
+    NumberSequenceKeypoint.new(1, 0, 0)
+})
+
+clonedAura1.ZOffset = -0.5
+clonedAura1.Acceleration = Vector3.new(0, 36, 0)
+clonedAura1.Drag = 5
+clonedAura1.VelocityInheritance = 0
+
+-- Исправлено: Lifetime должен быть NumberRange, а не Vector2
+clonedAura1.Lifetime = NumberRange.new(0.3, 0.5)
+clonedAura1.TimeScale = 0.5
+
+-- Исправлено: Speed должен быть NumberRange, а не Vector2
+clonedAura1.Speed = NumberRange.new(3.6, 3.6)
+clonedAura1.LockedToPart = true
+
+clonedAura1.SpreadAngle = Vector2.new(360, 360)
+clonedAura1.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+clonedAura1.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+
+clonedAura1.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromHSV(0, 1, 1)),          -- Красный
+    ColorSequenceKeypoint.new(0.2, Color3.fromHSV(0.1, 1, 1)),     -- Оранжевый
+    ColorSequenceKeypoint.new(0.4, Color3.fromHSV(0.15, 1, 1)),    -- Желтый
+    ColorSequenceKeypoint.new(0.6, Color3.fromHSV(0.3, 1, 1)),     -- Зеленый
+    ColorSequenceKeypoint.new(0.8, Color3.fromHSV(0.7, 1, 1)),     -- Синий
+    ColorSequenceKeypoint.new(1, Color3.fromHSV(0.8, 1, 1))        -- Фиолетовый
+})
+
+local nickname = game.Players.LocalPlayer.Character.Head.Display.Frame.TextLabel
+local Chat = game.Players.LocalPlayer.Character.Head.Chat.TextLabel
+local transitionTime = 0.5 -- Время перехода между цветами (в секундах)
+
+-- Цвета радуги в правильном порядке
+local rainbowColors = {
+    Color3.fromRGB(255, 0, 0),      -- Красный
+    Color3.fromRGB(255, 127, 0),    -- Оранжевый
+    Color3.fromRGB(255, 255, 0),    -- Желтый
+    Color3.fromRGB(0, 255, 0),      -- Зеленый
+    Color3.fromRGB(0, 0, 255),      -- Синий
+    Color3.fromRGB(75, 0, 130),     -- Индиго
+    Color3.fromRGB(148, 0, 211)     -- Фиолетовый
+}
+
+local currentIndex = 1
+local timePassed = 0
+
+game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
+    timePassed = timePassed + deltaTime
+    
+    if timePassed >= transitionTime then
+        currentIndex = (currentIndex % #rainbowColors) + 1
+        timePassed = 0
+    end
+    
+    -- Плавный переход между текущим и следующим цветом
+    local nextIndex = (currentIndex % #rainbowColors) + 1
+    local progress = timePassed / transitionTime
+    
+    local currentColor = rainbowColors[currentIndex]
+    local nextColor = rainbowColors[nextIndex]
+    
+    nickname.TextColor3 = Color3.new(
+        currentColor.R + (nextColor.R - currentColor.R) * progress,
+        currentColor.G + (nextColor.G - currentColor.G) * progress,
+        currentColor.B + (nextColor.B - currentColor.B) * progress
+    )
+end)
+
+game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
+    timePassed = timePassed + deltaTime
+    
+    if timePassed >= transitionTime then
+        currentIndex = (currentIndex % #rainbowColors) + 1
+        timePassed = 0
+    end
+    
+    -- Плавный переход между текущим и следующим цветом
+    local nextIndex = (currentIndex % #rainbowColors) + 1
+    local progress = timePassed / transitionTime
+    
+    local currentColor = rainbowColors[currentIndex]
+    local nextColor = rainbowColors[nextIndex]
+    
+    Chat.TextColor3 = Color3.new(
+        currentColor.R + (nextColor.R - currentColor.R) * progress,
+        currentColor.G + (nextColor.G - currentColor.G) * progress,
+        currentColor.B + (nextColor.B - currentColor.B) * progress
+    )
+end)
+
+local UserInputService = game:GetService("UserInputService")
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local char = game.Players.LocalPlayer.Character
+			if char then
+            local bone = char:FindFirstChild("Bone")
+            if bone then
+                bone:Destroy()
+            end
+        end
+    end
+end)
