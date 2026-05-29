@@ -1,0 +1,126 @@
+local plr = game.Players.LocalPlayer
+local char = plr.Character
+game.Players.LocalPlayer.Skins.Asgore.XA.Value = true
+game.Players.LocalPlayer.Skins.Asgore.Value = "XA"
+game.ReplicatedStorage.Char:FireServer("Asgore", "")
+wait(2.5)
+
+local Spear = game.Players.LocalPlayer.Character.Spear
+
+local SpearMesh = game.Players.LocalPlayer.Character.Spear.Spear
+SpearMesh.Color = Color3.fromRGB(255, 255, 0)
+
+local Attach = game.Players.LocalPlayer.Character.Spear.Spear.Attachment
+local Burst = game.Players.LocalPlayer.Character.Spear.Spear.Attachment:FindFirstChild("Burst")
+local Fire = game.Players.LocalPlayer.Character.Spear.Spear.Attachment:FindFirstChild("Fire")
+local FireBlast = game.Players.LocalPlayer.Character.Spear.Spear.Attachment:FindFirstChild("FireBlast")
+
+local Fire1 = game.Players.LocalPlayer.Character.Spear.Spear.Fire
+local FirePerm = game.Players.LocalPlayer.Character.Spear.Spear.FirePerm
+local FirePerm2 = game.Players.LocalPlayer.Character.Spear.Spear.FirePerm2
+local FireWall = game.Players.LocalPlayer.Character.Spear.Spear.FireWall
+
+local Trial1 = game.Players.LocalPlayer.Character.Spear.Spear.Trail1
+local Trial2 = game.Players.LocalPlayer.Character.Spear.Spear.Trail2
+
+local Trial3 = Instance.new("Trail")
+Trial3.Parent = game.Players.LocalPlayer.Character.Spear.Spear
+Trial3.Name = "Trail3"
+Trial3.Texture = "rbxassetid://11607034253"
+Trial3.TextureLength = 33
+Trial3.LightEmission = 1
+Trial3.Brightness = 10
+Trial3.Lifetime = 0.2
+Trial3.MaxLength = 0
+Trial3.MinLength = 0.11
+Trial3.WidthScale = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 1),
+    NumberSequenceKeypoint.new(1, 0)
+})
+Trial3.Attachment0 = game.Players.LocalPlayer.Character.Spear.Spear["2"]
+Trial3.Attachment1 = game.Players.LocalPlayer.Character.Spear.Spear["1"]
+
+local Main = game.Players.LocalPlayer.Character.Spear.Main
+local HighLight = game.Players.LocalPlayer.Character.Spear.Spear.Highlight
+HighLight.Enabled = true
+HighLight.OutlineColor = Color3.fromRGB(0, 0, 255)
+
+Burst.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+Fire.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+Fire1.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+FirePerm.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+FirePerm2.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+FireWall.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+
+
+Trial1.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+
+Trial2.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+Trial3.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+	ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+    ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+	ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 255))
+})
+
+Trial1.Enabled = true
+Trial2.Enabled = true
+Trial3.Enabled = true
