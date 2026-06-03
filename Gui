@@ -1,0 +1,54 @@
+local DiscordLibrary = loadstring(game:HttpGet"https://raw.githubusercontent.com/dawid-scripts/UI-Libs/main/discord%20lib.txt")()
+
+local win = DiscordLibrary:Window("Discord")
+
+local serv = win:Server("Iskra Army 2.0", "http://www.roblox.com/asset/?id=6031075938")
+
+local scripts = serv:Channel("scripts")
+
+scripts:Button("Finiki", function()
+
+loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/Finiki"))()
+end)
+scripts:Button("Teleport", function()
+
+loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/Teleport%20Gui"))()
+end)
+scripts:Button("Invisible", function()
+
+loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))()
+
+end)
+scripts:Button("GasterHands", function()
+
+loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/HasterGands"))()
+end)
+
+local skins = serv:Channel("skins")
+skins:Button("GBlack", function()
+
+loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/GBlack"))()
+end)
+
+skins:Button("LBP2", function()
+
+loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/LBP2"))()
+
+end)
+skins:Button("ColorAsgore", function()
+
+loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/ColorAsgore"))()
+
+end)
+skins:Button("ColorSans", function()
+
+loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/ColorSans"))()
+
+end)
+
+
+
+serv:Channel("by Iskra")
+
+
+DiscordLibrary:Notification("Success", "Gui loaded! You are god damn good because some noobs couldn't do even THIS lol", "gg")
