@@ -1,54 +1,265 @@
-local DiscordLibrary = loadstring(game:HttpGet"https://raw.githubusercontent.com/dawid-scripts/UI-Libs/main/discord%20lib.txt")()
+-- Function to create a console loading bar
+local function createLoadingBar(totalItems, title)
+    -- Check if console functions exist
+    local hasConsole = pcall(function()
+        return rconsolecreate and rconsoleinput and rconsoleprint
+    end)
+    
+    if not hasConsole then
+        print("Console not available!")
+        return {
+            update = function() end,
+            loaded = function() end,
+            complete = function() print("UI Loaded!") end,
+            error = function(msg) print("Error: " .. msg) end
+        }
+    end
+    
+    rconsolesettitle(title)
+    rconsolecreate()
+    rconsoleclear()
+    
+    local current = 0
+    local barLength = 30
+    
+    local function updateProgress(itemName, isComplete)
+        current = current + 1
+        local percentage = (current / totalItems) * 100
+        local filled = math.floor((percentage / 100) * barLength)
+        local empty = barLength - filled
+        
+        -- Use ONLY basic ASCII characters that work everywhere cuz it breakes my gui bruh
+        local bar = "[" .. string.rep("#", filled) .. string.rep("-", empty) .. "]"
+        local status = isComplete and "[OK]" or "[..]"
+        
+        rconsoleclear()
+        rconsoleprint("=== " .. title .. " ===\n\n")
+        rconsoleprint("Loading: " .. itemName .. "\n\n")
+        rconsoleprint("Progress: " .. bar .. " " .. string.format("%.1f", percentage) .. "%\n")
+        rconsoleprint("(" .. current .. "/" .. totalItems .. " completed)\n\n")
+        
+        if isComplete then
+            rconsoleprint("Status: " .. status .. " Complete!\n")
+        else
+            rconsoleprint("Status: " .. status .. " Loading...\n")
+        end
+    end
+    
+    return {
+        update = updateProgress,
+        loaded = function(itemName, success, errorMsg)
+            if success then
+                updateProgress(itemName, true)
+            else
+                rconsoleclear()
+                rconsoleprint("=== " .. title .. " ===\n\n")
+                rconsoleprint("[ERROR] loading: " .. itemName .. "\n")
+                rconsoleprint("Error: " .. tostring(errorMsg) .. "\n\n")
+                rconsoleprint("Continuing...\n")
+                task.wait(1)
+                updateProgress(itemName, false)
+            end
+        end,
+        complete = function()
+            rconsoleclear()
+            rconsoleprint("=== " .. title .. " ===\n\n")
+            rconsoleprint("[SUCCESS] UI LOADED\n\n")
+            rconsoleprint("Total steps completed: " .. totalItems .. "\n")
+            rconsoleprint("Enjoy the gui my Master\n")
+            task.wait(1.5)
+            rconsoledestroy()
+        end,
+        error = function(msg)
+            rconsoleclear()
+            rconsoleprint("=== " .. title .. " ===\n\n")
+            rconsoleprint("[FATAL ERROR] " .. msg .. "\n")
+            rconsoleprint("Please check your internet connection and try again.\n")
+        end
+    }
+end
 
-local win = DiscordLibrary:Window("Discord")
+-- ============================================
+-- LOAD THE UI WITH PROGRESS BAR
+-- ============================================
 
-local serv = win:Server("Iskra Army 2.0", "http://www.roblox.com/asset/?id=6031075938")
+-- Define the steps for loading
+local steps = {
+    {name = "Discord Library", url = "https://raw.githubusercontent.com/dawid-scripts/UI-Libs/main/discord%20lib.txt"},
+    {name = "Creating UI Window", type = "local"},
+    {name = "Loading Scripts Channel", type = "local"},
+    {name = "Loading Skins Channel", type = "local"},
+    {name = "Loading Misc Channel", type = "local"},
+    {name = "Finalizing UI", type = "local"}
+}
 
-local scripts = serv:Channel("scripts")
+-- Initialize loader
+local loader = createLoadingBar(#steps, "Iskra Army 2.0 UI Loader")
 
-scripts:Button("Finiki", function()
+-- Function to load the UI
+local function loadUI()
+    -- Step 1: Load Discord Library
+    loader.update(steps[1].name, false)
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(steps[1].url))()
+    end)
+    loader.loaded(steps[1].name, success, result)
+    task.wait(0.3)
+    
+    if not success then
+        loader.error("Failed to load Discord Library!")
+        return
+    end
+    
+    local DiscordLibrary = result
+    
+    -- Step 2: Create Window
+    loader.update(steps[2].name, false)
+    local win = DiscordLibrary:Window("Discord")
+    loader.loaded(steps[2].name, true)
+    task.wait(0.2)
+    
+    -- Step 3: Create Server
+    local serv = win:Server("Iskra Army 2.0", "http://www.roblox.com/asset/?id=6031075938")
+    loader.update(steps[3].name, false)
+    loader.loaded(steps[3].name, true)
+    task.wait(0.2)
+    
+    -- Step 4: Create Scripts Channel
+    loader.update(steps[4].name, false)
+    local scripts = serv:Channel("scripts")
+    
+    -- Add all your script buttons
+    scripts:Button("Finiki", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/Finiki"))()
+    end)
+    
+    scripts:Button("Teleport", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/Teleport%20Gui"))()
+    end)
+    
+    scripts:Button("Invisible", function()
+        loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))()
+    end)
+    
+    scripts:Button("GasterHands", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/HasterGands"))()
+    end)
+    
+    scripts:Button("Orbit", function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/kn0a/Silex-Hub/main/OrbitUniversal.lua", true))()
+    end)
+    
+    loader.loaded(steps[4].name, true)
+    task.wait(0.2)
+    
+    -- Step 5: Create Skins Channel
+    loader.update(steps[5].name, false)
+    local skins = serv:Channel("skins")
+    
+    skins:Button("GBlack", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/GBlack"))()
+    end)
+    
+    skins:Button("LBP2", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/LBP2"))()
+    end)
+    
+    skins:Button("ColorAsgore", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/ColorAsgore"))()
+    end)
+    
+    skins:Button("ColorSans", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/ColorSans"))()
+    end)
+    
+    loader.loaded(steps[5].name, true)
+    task.wait(0.2)
+    
+    -- Step 6: Create "by Iskra" Channel and finalize
+    loader.update(steps[6].name, false)
+    local forWork = serv:Channel("by Iskra")
+    
+    forWork:Button("Dex", function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/UltraFEmotes/im-bored/refs/heads/main/dexnoapi.lua"))()
+    end)
+    
+    forWork:Button("Cobalt", function()
+        loadstring(game:HttpGet("https://github.com/notpoiu/cobalt/releases/latest/download/Cobalt.luau"))()
+    end)
+    
+    loader.loaded(steps[6].name, true)
+    task.wait(0.3)
+    -- Complete!
+    loader.complete()
+end
 
-loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/Finiki"))()
+-- ============================================
+-- START THE SCRIPT
+-- ============================================
+
+-- Check if console exists
+local hasConsole = pcall(function()
+    return rconsolecreate and rconsoleinput and rconsoleprint
 end)
-scripts:Button("Teleport", function()
 
-loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/Teleport%20Gui"))()
-end)
-scripts:Button("Invisible", function()
+if hasConsole then
+    -- Load with progress bar
+    loadUI()
+else
+    -- Fallback without console
+    print("Console not available, loading directly...")
+    local DiscordLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/UI-Libs/main/discord%20lib.txt"))()
+    local win = DiscordLibrary:Window("Discord")
+    local serv = win:Server("Iskra Army 2.0", "http://www.roblox.com/asset/?id=6031075938")
+    local scripts = serv:Channel("scripts")
 
-loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))()
+    scripts:Button("Finiki", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/Finiki"))()
+    end)
+    
+    scripts:Button("Teleport", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/Teleport%20Gui"))()
+    end)
+    
+    scripts:Button("Invisible", function()
+        loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))()
+    end)
+    
+    scripts:Button("GasterHands", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/HasterGands"))()
+    end)
+    
+    scripts:Button("Orbit", function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/kn0a/Silex-Hub/main/OrbitUniversal.lua", true))()
+    end)
 
-end)
-scripts:Button("GasterHands", function()
+    local skins = serv:Channel("skins")
 
-loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/HasterGands"))()
-end)
+    skins:Button("GBlack", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/GBlack"))()
+    end)
+    
+    skins:Button("LBP2", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/LBP2"))()
+    end)
+    
+    skins:Button("ColorAsgore", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/ColorAsgore"))()
+    end)
+    
+    skins:Button("ColorSans", function()
+        loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/ColorSans"))()
+    end)
 
-local skins = serv:Channel("skins")
-skins:Button("GBlack", function()
+    local forWork = serv:Channel("by Iskra")
 
-loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/GBlack"))()
-end)
+    forWork:Button("Dex", function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/UltraFEmotes/im-bored/refs/heads/main/dexnoapi.lua"))()
+    end)
 
-skins:Button("LBP2", function()
+    forWork:Button("Cobalt", function()
+        loadstring(game:HttpGet("https://github.com/notpoiu/cobalt/releases/latest/download/Cobalt.luau"))()
+    end)
 
-loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/LBP2"))()
-
-end)
-skins:Button("ColorAsgore", function()
-
-loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/ColorAsgore"))()
-
-end)
-skins:Button("ColorSans", function()
-
-loadstring(game:HttpGet("https://github.com/vasapluznikov126-rgb/loadstrings/raw/refs/heads/main/ColorSans"))()
-
-end)
-
-
-
-serv:Channel("by Iskra")
-
-
-DiscordLibrary:Notification("Success", "Gui loaded! You are god damn good because some noobs couldn't do even THIS lol", "gg")
+    DiscordLibrary:Notification("Success", "Gui loaded! You are god damn good because some noobs couldn't do even THIS lol", "gg")
+end
