@@ -24,10 +24,10 @@ local teleportLocations = {
         name = "🏠 ROOF",
         position = Vector3.new(-37.8, 1489.5, 777.5),
         color = Color3.fromRGB(255, 150, 0)
-    }
+    },
     {
         name = "🏠 AUTO-FARM",
-        position = Vector3.new(9989, 449, 38136)
+        position = Vector3.new(9989, 449, 38136),
         color = Color3.fromRGB(255, 150, 0)
     }
 }
